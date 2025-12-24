@@ -3,145 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bean & Bloom Transparent POS</title>
-    
+    <title>Bean & Bloom POS</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-
     <style>
-        :root { --primary: #6F4E37; --bg: #f4f6f8; --white: #fff; --success: #27ae60; --danger: #c0392b; --radius: 12px; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; padding: 0; font-family: sans-serif; background: var(--bg); padding-bottom: 80px; }
-        .container { max-width: 800px; margin: 0 auto; padding: 15px; }
-
-        /* HEADER */
-        .header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 15px; border-radius: var(--radius); margin-bottom: 15px; }
-        .date-picker { border: 1px solid #ccc; padding: 8px; border-radius: 6px; font-weight: bold; }
-
-        /* REAL-TIME STATS (Visible to Everyone) */
-        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
-        .stat-box { background: var(--white); padding: 15px 5px; border-radius: var(--radius); text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .stat-label { font-size: 0.7rem; color: #888; font-weight: bold; text-transform: uppercase; }
-        .stat-val { font-size: 1.1rem; font-weight: 800; margin-top: 5px; }
-
-        /* TABS */
-        .tabs { display: flex; gap: 10px; margin-bottom: 15px; background: #e0e0e0; padding: 5px; border-radius: var(--radius); }
-        .tab { flex: 1; padding: 12px; border: none; background: transparent; border-radius: 8px; font-weight: bold; color: #555; cursor: pointer; }
-        .tab.active { background: var(--white); color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-
-        /* MENU GRID */
-        .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } 
-        .menu-item { background: var(--white); padding: 15px 5px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; border-bottom: 3px solid var(--primary); cursor: pointer; }
-        .menu-item:active { transform: scale(0.95); background: #eee; }
-
-        /* EXPENSE & LOGS (Transparent View) */
-        .transparency-panel { background: var(--white); padding: 15px; border-radius: var(--radius); margin-bottom: 20px; }
-        .expense-row { display: flex; gap: 5px; margin-bottom: 15px; }
-        .expense-row input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-        
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th { text-align: left; color: #777; font-size: 0.75rem; border-bottom: 1px solid #ccc; padding: 5px; }
-        td { padding: 10px 5px; border-bottom: 1px solid #eee; }
-
-        /* ADMIN FOOTER */
-        .admin-footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--white); padding: 10px; border-top: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; z-index: 99; }
-        .btn-finalize { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; width: 100%; }
-
-        /* MODAL */
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; }
-        .modal-box { background: white; padding: 25px; border-radius: 15px; width: 80%; max-width: 300px; text-align: center; }
-        .qty-inp { font-size: 2rem; width: 100%; text-align: center; margin: 15px 0; border: 2px solid var(--primary); border-radius: 8px; }
-
-        /* PRINT */
-        .print-header { display: none; }
-        @media print {
-            .no-print, .tabs, .expense-row, .modal, .admin-login-btn { display: none !important; }
-            .print-header { display: block; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; }
-            body { background: white; padding: 0; }
-            .container { max-width: 100%; }
-        }
+        :root { --primary: #6F4E37; --food: #d35400; --bg: #f8f9fa; --white: #fff; --radius: 12px; }
+        body { margin: 0; font-family: system-ui; background: var(--bg); padding-bottom: 80px; }
+        .container { max-width: 600px; margin: 0 auto; padding: 15px; }
+        .card { background: var(--white); padding: 15px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        .stat-box { text-align: center; background: var(--white); padding: 10px; border-radius: 10px; }
+        .stat-val { font-weight: 800; font-size: 1.1rem; display: block; }
+        .stat-lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 15px; }
+        .tab { flex: 1; padding: 12px; border: none; border-radius: 8px; background: #ddd; font-weight: bold; }
+        .tab.active { background: var(--primary); color: white; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .menu-item { background: white; padding: 15px 5px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--primary); font-size: 0.85rem; font-weight: bold; }
+        .expense-area { background: #fff1f1; border: 1px dashed red; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        th { text-align: left; padding: 8px; border-bottom: 1px solid #ccc; }
+        td { padding: 8px; border-bottom: 1px solid #eee; }
+        .admin-footer { position: fixed; bottom: 0; width: 100%; max-width: 600px; background: white; padding: 10px; border-top: 1px solid #ddd; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-box { background: white; padding: 20px; border-radius: 15px; width: 280px; text-align: center; }
+        @media print { .no-print { display: none !important; } .container { width: 100%; } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    
-    <div class="print-header">
-        <h1>BEAN & BLOOM</h1>
-        <p id="print-date"></p>
-    </div>
-
-    <div class="header no-print">
-        <h3 style="margin:0; color:var(--primary)">POS</h3>
-        <input type="date" id="work-date" class="date-picker">
-        <button id="auth-btn" onclick="toggleAuth()" class="admin-login-btn" style="margin-left:10px; border:none; background:none; font-size:0.8rem; text-decoration:underline;">Admin Login</button>
+    <div class="no-print" style="display:flex; justify-content: space-between; margin-bottom: 10px;">
+        <h3 style="color:var(--primary)">Bean & Bloom</h3>
+        <input type="date" id="work-date" style="padding:5px; border-radius:5px; border:1px solid #ccc;">
     </div>
 
     <div class="stats">
-        <div class="stat-box">
-            <div class="stat-label">Sales</div>
-            <div class="stat-val" style="color:var(--success)" id="t-sales">0</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">Paid Out</div>
-            <div class="stat-val" style="color:var(--danger)" id="t-exp">0</div>
-        </div>
-        <div class="stat-box" style="background:#2c3e50; color:white;">
-            <div class="stat-label" style="color:#ccc">Net Cash</div>
-            <div class="stat-val" id="t-net">0</div>
-        </div>
+        <div class="stat-box"><span class="stat-lbl">Sales</span><span class="stat-val" style="color:green" id="s-total">0</span></div>
+        <div class="stat-box"><span class="stat-lbl">Expenses</span><span class="stat-val" style="color:red" id="e-total">0</span></div>
+        <div class="stat-box" style="background:var(--primary); color:white"><span class="stat-lbl" style="color:#ddd">Net</span><span class="stat-val" id="n-total">0</span></div>
     </div>
 
     <div class="tabs no-print">
-        <button class="tab active" onclick="switchView('menu')" id="tab-menu">Menu & Items</button>
-        <button class="tab" onclick="switchView('logs')" id="tab-logs">Logs & Expenses</button>
+        <button class="tab active" id="t1" onclick="setView('menu')">Menu</button>
+        <button class="tab" id="t2" onclick="setView('logs')">Transactions</button>
     </div>
 
-    <div id="view-menu">
-        <div id="menu-grid" class="menu-grid"></div>
+    <div id="v-menu">
+        <div class="menu-grid" id="m-grid"></div>
     </div>
 
-    <div id="view-logs" style="display:none;">
-        
-        <div class="transparency-panel no-print" style="border:1px dashed var(--danger);">
-            <h4 style="margin:0 0 10px 0; color:var(--danger)">Record Expense Paid Out</h4>
-            <div class="expense-row">
-                <input type="text" id="ex-desc" placeholder="Details (e.g. Sugar)">
-                <input type="number" id="ex-amt" placeholder="Amount (ETB)">
-                <button onclick="addExpense()" style="background:var(--danger); color:white; border:none; padding:0 20px; border-radius:6px; font-weight:bold;">Save</button>
+    <div id="v-logs" style="display:none;">
+        <div class="expense-area no-print">
+            <h4 style="margin:0 0 10px; color:red;">Add Paid Out / Expense</h4>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="ex-n" placeholder="Milk, Sugar..." style="flex:2; padding:8px;">
+                <input type="number" id="ex-p" placeholder="Price" style="flex:1; padding:8px;">
+                <button onclick="addExp()" style="background:red; color:white; border:none; padding:8px; border-radius:5px;">Save</button>
             </div>
         </div>
-
-        <div class="transparency-panel">
-            <h4 style="margin-top:0;">Today's Transactions</h4>
+        <div class="card">
+            <h4>Daily Summary</h4>
             <table>
-                <thead><tr><th>Item / Expense</th><th>Qty</th><th>Total</th><th class="admin-only no-print">X</th></tr></thead>
-                <tbody id="log-body"></tbody>
+                <thead><tr><th>Item</th><th>Qty</th><th>Total</th><th class="adm no-print">Action</th></tr></thead>
+                <tbody id="l-body"></tbody>
             </table>
         </div>
     </div>
 
-    <div id="admin-bar" class="admin-footer no-print" style="display:none;">
-        <span style="font-size:0.8rem; font-weight:bold;">Admin Mode Active</span>
-        <button onclick="finalizeDay()" style="background:#2c3e50; color:white; border:none; padding:10px 20px; border-radius:6px; font-weight:bold;">🖨️ Finalize & Print</button>
+    <div class="admin-footer no-print">
+        <button id="auth-btn" onclick="handleAuth()" style="width:100%; padding:12px; border-radius:8px; background:#2c3e50; color:white; border:none; font-weight:bold;">Admin Login</button>
+        <button id="print-btn" onclick="window.print()" style="width:100%; margin-top:5px; display:none; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold;">Finalize & Save PDF</button>
     </div>
-
 </div>
 
-<div id="modal" class="modal">
+<div class="modal" id="qty-modal">
     <div class="modal-box">
-        <h3 id="m-title">Item</h3>
-        <input type="number" id="qty" class="qty-inp" value="1" inputmode="numeric">
+        <h3 id="m-name">Item</h3>
+        <input type="number" id="m-qty" style="width:100%; font-size:2rem; text-align:center; margin:15px 0;" value="1">
         <div style="display:flex; gap:10px;">
-            <button onclick="closeModal()" style="flex:1; padding:10px; border:none; border-radius:6px;">Cancel</button>
-            <button onclick="confirmSale()" style="flex:1; padding:10px; border:none; border-radius:6px; background:var(--primary); color:white; font-weight:bold;">Add</button>
+            <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
+            <button onclick="saveSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Confirm</button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- FIREBASE CONFIG (Use Your Keys) ---
     const firebaseConfig = {
         apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
         authDomain: "bean-5a113.firebaseapp.com",
@@ -151,143 +99,107 @@
         appId: "1:702927377502:web:9e50192a0c431da69850cf"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
+    const db = firebase.firestore(), auth = firebase.auth();
 
-    // --- MENU ---
     const MENU = [
-        {n: 'Special Coffee', p: 40}, {n: 'Jebena Coffee', p: 40}, {n: 'Tea', p: 25}, 
-        {n: 'Macchiato', p: 60}, {n: 'Milk', p: 70}, {n: 'Lemon Tea', p: 50}, 
-        {n: 'Soft Drink', p: 50}, {n: 'Water 2L', p: 40}, {n: 'Water 1L', p: 35}, {n: 'Water 0.5L', p: 25},
-        {n: 'Avocado Juice', p: 120}, {n: 'Mango Juice', p: 120}, {n: 'Special Juice', p: 250},
-        {n: 'Pasta', p: 130}, {n: 'Shiro', p: 120}, {n: 'Tibs', p: 270}, {n: 'Meat Firfir', p: 250},
-        {n: 'Egg Sandwich', p: 120}, {n: 'Bread', p: 0}
+        {n: 'Special Coffee', p: 40}, {n: 'Jebena Coffee', p: 40}, {n: 'Tea', p: 25}, {n: 'Macchiato', p: 60}, {n: 'Milk', p: 70}, 
+        {n: 'Lemon Tea', p: 50}, {n: 'Soft Drink', p: 50}, {n: 'Water 2L', p: 40}, {n: 'Water 1L', p: 35}, {n: 'Water 0.5L', p: 25},
+        {n: 'Avocado Juice', p: 120}, {n: 'Mango Juice', p: 120}, {n: 'Mixed Juice', p: 120}, {n: 'Special Juice', p: 250},
+        {n: 'Pasta Sauce', p: 130}, {n: 'Shiro', p: 120}, {n: 'Tegabino', p: 130}, {n: 'Firfir', p: 100}, {n: 'Bayaynet', p: 140},
+        {n: 'Tibs', p: 270}, {n: 'Meat Firfir', p: 250}, {n: 'Egg Sandwich', p: 120}, {n: 'Egg Firfir', p: 140}
     ];
 
-    let selectedItem = null;
-    let isAdmin = false;
+    let selItem = null, isAdmin = false;
 
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
-        document.getElementById('work-date').onchange = syncData; // Change date = View history
+        document.getElementById('work-date').onchange = sync;
         renderMenu();
-        syncData(); // Listen to DB immediately
-        
-        auth.onAuthStateChanged(user => {
-            isAdmin = !!user;
-            document.getElementById('auth-btn').innerText = isAdmin ? "Logout" : "Admin Login";
-            document.getElementById('admin-bar').style.display = isAdmin ? 'flex' : 'none';
-            syncData(); // Re-render to show/hide delete buttons
+        auth.onAuthStateChanged(u => {
+            isAdmin = !!u;
+            document.getElementById('auth-btn').innerText = u ? "Logout Admin" : "Admin Login";
+            document.getElementById('print-btn').style.display = u ? "block" : "none";
+            sync();
         });
     };
 
     function renderMenu() {
-        const grid = document.getElementById('menu-grid');
-        MENU.forEach(item => {
-            const btn = document.createElement('div');
-            btn.className = 'menu-item';
-            btn.innerHTML = `<strong>${item.n}</strong><br><span style="color:#777">${item.p > 0 ? item.p : 'Open'}</span>`;
-            btn.onclick = () => { selectedItem = item; document.getElementById('m-title').innerText = item.n; document.getElementById('modal').style.display = 'flex'; document.getElementById('qty').focus(); };
-            grid.appendChild(btn);
+        const g = document.getElementById('m-grid');
+        MENU.forEach(i => {
+            const d = document.createElement('div');
+            d.className = 'menu-item';
+            d.innerHTML = `${i.n}<br><span style="color:#777; font-size:0.7rem;">${i.p} ETB</span>`;
+            d.onclick = () => { selItem = i; document.getElementById('m-name').innerText = i.n; document.getElementById('qty-modal').style.display='flex'; };
+            g.appendChild(d);
         });
     }
 
-    function syncData() {
-        const date = document.getElementById('work-date').value;
-        db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
-            let sales = 0, expenses = 0, summary = {};
-            
-            snap.forEach(doc => {
-                const t = doc.data();
-                const id = doc.id;
-                
-                if(t.isExp) {
-                    expenses += t.p;
-                    if(!summary[t.n]) summary[t.n] = {q:0, p:0, ids:[], isExp:true};
-                    summary[t.n].p += t.p;
-                    summary[t.n].ids.push(id);
-                } else {
-                    sales += t.p;
-                    if(!summary[t.n]) summary[t.n] = {q:0, p:0, ids:[], isExp:false};
-                    summary[t.n].q += t.q;
-                    summary[t.n].p += t.p;
-                    summary[t.n].ids.push(id);
-                }
-            });
-
-            // Update UI Stats
-            document.getElementById('t-sales').innerText = sales.toLocaleString();
-            document.getElementById('t-exp').innerText = expenses.toLocaleString();
-            document.getElementById('t-net').innerText = (sales - expenses).toLocaleString() + " ETB";
-
-            // Render Table (Grouped View)
-            const tbody = document.getElementById('log-body');
-            tbody.innerHTML = '';
-            for(let name in summary) {
-                const item = summary[name];
-                const tr = document.createElement('tr');
-                // Admin gets Delete button, Waiter sees nothing in that column
-                const deleteBtn = isAdmin ? `<button onclick="deleteItem('${name}')" style="color:red;border:none;background:none;font-weight:bold;cursor:pointer;">X</button>` : '';
-                
-                tr.innerHTML = `
-                    <td style="color:${item.isExp?'red':'#333'}">${name}</td>
-                    <td>${item.isExp ? '-' : item.q}</td>
-                    <td>${item.p}</td>
-                    <td class="admin-only no-print">${deleteBtn}</td>
-                `;
-                tbody.appendChild(tr);
-            }
-        });
-    }
-
-    // ACTIONS
-    async function confirmSale() {
-        const q = parseInt(document.getElementById('qty').value);
+    async function saveSale() {
+        const q = parseInt(document.getElementById('m-qty').value);
         if(!q) return;
         await db.collection('transactions').add({
-            n: selectedItem.n, p: (selectedItem.p > 0 ? selectedItem.p * q : 0), // Handle open price logic if needed
-            q, isExp: false, d: document.getElementById('work-date').value, ts: firebase.firestore.FieldValue.serverTimestamp()
+            n: selItem.n, q, p: selItem.p * q, ex: false, d: document.getElementById('work-date').value, ts: firebase.firestore.FieldValue.serverTimestamp()
         });
         closeModal();
     }
 
-    async function addExpense() {
-        const desc = document.getElementById('ex-desc').value;
-        const amt = parseFloat(document.getElementById('ex-amt').value);
-        if(!desc || !amt) return;
+    async function addExp() {
+        const n = document.getElementById('ex-n').value, p = parseFloat(document.getElementById('ex-p').value);
+        if(!n || !p) return;
         await db.collection('transactions').add({
-            n: desc, p: amt, q: 1, isExp: true, d: document.getElementById('work-date').value, ts: firebase.firestore.FieldValue.serverTimestamp()
+            n: "EXP: "+n, q: 1, p, ex: true, d: document.getElementById('work-date').value, ts: firebase.firestore.FieldValue.serverTimestamp()
         });
-        document.getElementById('ex-desc').value = ''; document.getElementById('ex-amt').value = '';
+        document.getElementById('ex-n').value = ''; document.getElementById('ex-p').value = '';
     }
 
-    function deleteItem(name) {
-        if(!isAdmin) return;
-        if(confirm(`Admin: Delete all entries for ${name}?`)) {
-            // Need complex batch delete, or simpler: just visually delete for now? 
-            // For simplicity in this single file, we alert.
-            // In production, we'd query and delete docs.
-            alert("Please delete items from Firestore Console to prevent accidental data loss in this lightweight version.");
+    function sync() {
+        const date = document.getElementById('work-date').value;
+        db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
+            let s=0, e=0, map={};
+            snap.forEach(doc => {
+                const t = doc.data();
+                if(t.ex) { e += t.p; } else { s += t.p; }
+                if(!map[t.n]) map[t.n] = {q:0, p:0, ids:[]};
+                map[t.n].q += t.q; map[t.n].p += t.p; map[t.n].ids.push(doc.id);
+            });
+            document.getElementById('s-total').innerText = s;
+            document.getElementById('e-total').innerText = e;
+            document.getElementById('n-total').innerText = (s - e) + " ETB";
+            
+            const tbody = document.getElementById('l-body');
+            tbody.innerHTML = '';
+            for(let name in map) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${name}</td><td>${map[name].q}</td><td>${map[name].p}</td><td class="adm no-print">${isAdmin ? '<button onclick="delGroup(\''+name+'\')" style="color:red">X</button>' : '-'}</td>`;
+                tbody.appendChild(row);
+            }
+        });
+    }
+
+    async function delGroup(name) {
+        if(!isAdmin || !confirm("Delete " + name + "?")) return;
+        const date = document.getElementById('work-date').value;
+        const batch = db.batch();
+        const snap = await db.collection('transactions').where('d', '==', date).where('n', '==', name).get();
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+    }
+
+    async function handleAuth() {
+        if(auth.currentUser) { auth.signOut(); }
+        else {
+            const email = prompt("Email:"), pass = prompt("Password:");
+            if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(e => alert(e.message));
         }
     }
 
-    function toggleAuth() {
-        if(auth.currentUser) auth.signOut();
-        else auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    function setView(v) {
+        document.getElementById('v-menu').style.display = v === 'menu' ? 'block' : 'none';
+        document.getElementById('v-logs').style.display = v === 'logs' ? 'block' : 'none';
+        document.getElementById('t1').classList.toggle('active', v === 'menu');
+        document.getElementById('t2').classList.toggle('active', v === 'logs');
     }
-
-    function finalizeDay() {
-        document.getElementById('print-date').innerText = "Date: " + document.getElementById('work-date').value;
-        window.print();
-    }
-
-    function switchView(v) {
-        document.getElementById('view-menu').style.display = v === 'menu' ? 'block' : 'none';
-        document.getElementById('view-logs').style.display = v === 'logs' ? 'block' : 'none';
-        document.getElementById('tab-menu').className = v === 'menu' ? 'tab active' : 'tab';
-        document.getElementById('tab-logs').className = v === 'logs' ? 'tab active' : 'tab';
-    }
-    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+    function closeModal() { document.getElementById('qty-modal').style.display = 'none'; }
 </script>
 </body>
 </html>
