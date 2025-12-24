@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bean & Bloom POS - Final</title>
+    <title>Bean & Bloom POS - Professional</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -12,21 +12,22 @@
         body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
         .container { max-width: 650px; margin: 0 auto; padding: 15px; }
         
-        /* UI Components */
         header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
         .val { font-size: 1.1rem; font-weight: 800; display: block; }
         .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
         
-        /* Menu */
         .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
         .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
         .food-btn { border-left-color: var(--food); }
         .add-btn { border-left-color: #7f8c8d; }
 
-        /* Tables */
+        .expense-panel { background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed red; }
+        .special-expense-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .sp-btn { padding: 10px; font-size: 0.75rem; font-weight: bold; border: 1px solid red; border-radius: 5px; background: #fff5f5; cursor: pointer; color: red; }
+
         table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
         .print-only { display: none; }
@@ -36,7 +37,6 @@
             .print-only { display: block !important; }
             body { background: white; }
             .container { max-width: 100%; padding: 0; }
-            .card { border: none; }
         }
 
         .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
@@ -60,8 +60,8 @@
     </header>
 
     <div class="dashboard">
-        <div class="card"><span class="lbl">Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
-        <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
+        <div class="card"><span class="lbl">Total Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
+        <div class="card"><span class="lbl">All Payouts</span><span class="val" id="total-e" style="color:red">0</span></div>
         <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
     </div>
 
@@ -72,13 +72,19 @@
         <div class="section-title">Non-Fasting Food</div><div id="grid-nonfast" class="menu-grid"></div>
         <div class="section-title">Additives & Snacks</div><div id="grid-add" class="menu-grid"></div>
 
-        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed red;">
-            <p style="font-weight:bold; color:red; font-size:0.7rem; margin-bottom:5px;">ወጭወችን ጨምር</p>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="ex-name" placeholder="የወጭውን ምክንያት" style="flex:2; padding:8px;">
-                <input type="number" id="ex-amt" placeholder="የብሩን መጠን" style="flex:1; padding:8px;">
+        <div class="expense-panel">
+            <p style="font-weight:bold; color:red; font-size:0.7rem; margin-bottom:8px;">RECORD PAYOUTS / DEDUCTIONS</p>
+            
+            <div class="special-expense-btns">
+                <button class="sp-btn" onclick="quickEx('በባንክ የገባ (Bank)')">🏦 በባንክ የገባ</button>
+                <button class="sp-btn" onclick="quickEx('አዳሪ ገንዘብ (Float)')">⏳ አዳሪ ገንዘብ</button>
             </div>
-            <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout</button>
+
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="ex-name" placeholder="Other Reason..." style="flex:2; padding:8px;">
+                <input type="number" id="ex-amt" placeholder="Amount" style="flex:1; padding:8px;">
+            </div>
+            <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px; font-weight:bold;">Save Other Payout</button>
         </div>
     </div>
 
@@ -160,6 +166,14 @@
         closeModal();
     }
 
+    // Quick Expense Function for Bank/Float
+    async function quickEx(label) {
+        const amt = prompt("Enter amount for " + label + ":");
+        if(amt && !isNaN(amt)) {
+            await db.collection('transactions').add({ n: "OUT: " + label, q: 1, p: parseFloat(amt), d: document.getElementById('work-date').value, ex: true, ts: Date.now() });
+        }
+    }
+
     async function saveEx() {
         const n = document.getElementById('ex-name').value, p = parseFloat(document.getElementById('ex-amt').value);
         if(!n || !p) return;
@@ -198,10 +212,8 @@
 
     async function clearDay() {
         const snap = await db.collection('transactions').where('d', '==', document.getElementById('work-date').value).get();
-        const batch = db.batch();
-        snap.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-        alert("System Brushed. Ready for next day.");
+        const batch = db.batch(); snap.forEach(d => batch.delete(d.ref));
+        await batch.commit(); alert("System Brushed. Ready for next day.");
     }
 
     async function delDoc(id) { if(confirm("Admin: Delete?")) await db.collection('transactions').doc(id).delete(); }
