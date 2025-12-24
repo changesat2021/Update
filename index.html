@@ -3,189 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bean & Bloom POS</title>
+    <title>Bean & Bloom Transparent POS</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
     <style>
-        /* --- VISUAL STYLES --- */
-        :root { 
-            --primary: #6F4E37; /* Coffee Brown */
-            --secondary: #d35400; /* Food Orange */
-            --accent: #2c3e50; /* Dark Blue/Grey */
-            --bg: #f4f6f8;
-            --white: #ffffff;
-            --success: #27ae60;
-            --danger: #c0392b;
-            --radius: 10px;
-        }
-
+        :root { --primary: #6F4E37; --bg: #f4f6f8; --white: #fff; --success: #27ae60; --danger: #c0392b; --radius: 12px; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: #333; padding-bottom: 60px; }
+        body { margin: 0; padding: 0; font-family: sans-serif; background: var(--bg); padding-bottom: 80px; }
+        .container { max-width: 800px; margin: 0 auto; padding: 15px; }
+
+        /* HEADER */
+        .header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 15px; border-radius: var(--radius); margin-bottom: 15px; }
+        .date-picker { border: 1px solid #ccc; padding: 8px; border-radius: 6px; font-weight: bold; }
+
+        /* REAL-TIME STATS (Visible to Everyone) */
+        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+        .stat-box { background: var(--white); padding: 15px 5px; border-radius: var(--radius); text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .stat-label { font-size: 0.7rem; color: #888; font-weight: bold; text-transform: uppercase; }
+        .stat-val { font-size: 1.1rem; font-weight: 800; margin-top: 5px; }
+
+        /* TABS */
+        .tabs { display: flex; gap: 10px; margin-bottom: 15px; background: #e0e0e0; padding: 5px; border-radius: var(--radius); }
+        .tab { flex: 1; padding: 12px; border: none; background: transparent; border-radius: 8px; font-weight: bold; color: #555; cursor: pointer; }
+        .tab.active { background: var(--white); color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+        /* MENU GRID */
+        .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } 
+        .menu-item { background: var(--white); padding: 15px 5px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; border-bottom: 3px solid var(--primary); cursor: pointer; }
+        .menu-item:active { transform: scale(0.95); background: #eee; }
+
+        /* EXPENSE & LOGS (Transparent View) */
+        .transparency-panel { background: var(--white); padding: 15px; border-radius: var(--radius); margin-bottom: 20px; }
+        .expense-row { display: flex; gap: 5px; margin-bottom: 15px; }
+        .expense-row input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
         
-        .container { max-width: 1000px; margin: 0 auto; padding: 15px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { text-align: left; color: #777; font-size: 0.75rem; border-bottom: 1px solid #ccc; padding: 5px; }
+        td { padding: 10px 5px; border-bottom: 1px solid #eee; }
 
-        /* HEADER & TABS */
-        .header-bar { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 15px; border-radius: var(--radius); box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .app-title { font-size: 1.2rem; font-weight: 800; color: var(--primary); margin: 0; }
-        .date-picker { border: 1px solid #ddd; padding: 8px; border-radius: 6px; font-weight: bold; color: var(--accent); outline: none; }
-
-        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; background: #e0e0e0; padding: 5px; border-radius: var(--radius); }
-        .tab-btn { flex: 1; border: none; background: transparent; padding: 12px; border-radius: 8px; font-weight: 600; color: #666; cursor: pointer; transition: 0.2s; }
-        .tab-btn.active { background: var(--white); color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-
-        /* DASHBOARD CARDS */
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 25px; }
-        .stat-card { background: var(--white); padding: 15px; border-radius: var(--radius); text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
-        .stat-label { font-size: 0.7rem; text-transform: uppercase; color: #888; letter-spacing: 0.5px; font-weight: bold; }
-        .stat-val { font-size: 1.2rem; font-weight: 800; margin-top: 5px; color: var(--accent); }
-        .stat-val.income { color: var(--success); }
-        .stat-val.expense { color: var(--danger); }
-
-        /* WAITER MENU GRID */
-        .section-header { margin: 25px 0 10px; font-size: 0.9rem; font-weight: bold; color: #555; border-left: 4px solid var(--primary); padding-left: 8px; text-transform: uppercase; }
-        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        @media(min-width: 600px) { .menu-grid { grid-template-columns: repeat(4, 1fr); } }
-
-        .item-card { background: var(--white); padding: 20px 10px; border-radius: var(--radius); text-align: center; border: 1px solid transparent; box-shadow: 0 2px 4px rgba(0,0,0,0.02); cursor: pointer; transition: transform 0.1s; border-bottom: 3px solid #eee; }
-        .item-card:active { transform: scale(0.97); }
-        .item-card.drink { border-bottom-color: var(--primary); }
-        .item-card.food { border-bottom-color: var(--secondary); }
-        .item-name { font-size: 0.95rem; font-weight: 600; margin-bottom: 5px; }
-        .item-price { font-size: 0.85rem; color: #777; font-weight: 500; }
-
-        /* ADMIN SECTION */
-        .admin-panel { display: none; background: var(--white); padding: 20px; border-radius: var(--radius); }
-        .login-box { text-align: center; padding: 40px 20px; }
-        .google-btn { background: #4285F4; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; }
-        
-        .expense-form { display: flex; gap: 8px; margin-bottom: 20px; background: #fff5f5; padding: 15px; border-radius: 8px; border: 1px dashed var(--danger); }
-        .expense-form input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-        
-        .log-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 10px; }
-        .log-table th { text-align: left; background: #f8f9fa; padding: 10px; font-size: 0.8rem; color: #666; text-transform: uppercase; }
-        .log-table td { padding: 10px; border-bottom: 1px solid #eee; }
-        .log-table tr:last-child td { border-bottom: none; }
+        /* ADMIN FOOTER */
+        .admin-footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--white); padding: 10px; border-top: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; z-index: 99; }
+        .btn-finalize { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; width: 100%; }
 
         /* MODAL */
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
-        .modal { background: var(--white); width: 90%; max-width: 320px; padding: 25px; border-radius: 16px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        .qty-input { width: 100%; font-size: 2.5rem; text-align: center; margin: 15px 0; border: 2px solid var(--primary); border-radius: 8px; padding: 5px; color: var(--primary); font-weight: bold; outline: none; }
-        .modal-actions { display: flex; gap: 10px; margin-top: 15px; }
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; }
-        .btn-cancel { background: #f1f3f5; color: #555; }
-        .btn-confirm { background: var(--primary); color: white; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-box { background: white; padding: 25px; border-radius: 15px; width: 80%; max-width: 300px; text-align: center; }
+        .qty-inp { font-size: 2rem; width: 100%; text-align: center; margin: 15px 0; border: 2px solid var(--primary); border-radius: 8px; }
 
-        /* PRINT STYLES (PDF GENERATION) */
+        /* PRINT */
         .print-header { display: none; }
         @media print {
+            .no-print, .tabs, .expense-row, .modal, .admin-login-btn { display: none !important; }
+            .print-header { display: block; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; }
             body { background: white; padding: 0; }
-            .no-print, .nav-tabs, .header-bar, .menu-grid, .section-header, .expense-form, .overlay, .login-box { display: none !important; }
-            .container { max-width: 100%; margin: 0; padding: 0; }
-            .admin-panel { display: block !important; box-shadow: none; padding: 0; }
-            .print-header { display: block; text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 20px; }
-            .stats-grid { border: 1px solid #000; border-radius: 0; margin-bottom: 30px; }
-            .stat-card { box-shadow: none; border-right: 1px solid #000; border-radius: 0; }
-            .stat-card:last-child { border-right: none; }
-            .log-table th { border-bottom: 2px solid #000; color: #000; }
-            .log-table td { border-bottom: 1px solid #ccc; }
+            .container { max-width: 100%; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
+    
     <div class="print-header">
-        <h1 style="margin:0; font-size:1.8rem;">BEAN & BLOOM</h1>
-        <p style="margin:5px 0 0; color:#555;">Daily Payout & Expense Report</p>
-        <p id="print-date-display" style="margin-top:10px; font-weight:bold;"></p>
+        <h1>BEAN & BLOOM</h1>
+        <p id="print-date"></p>
     </div>
 
-    <div class="nav-tabs no-print">
-        <button class="tab-btn active" onclick="setMode('waiter')" id="btn-waiter">Waiter View</button>
-        <button class="tab-btn" onclick="setMode('admin')" id="btn-admin">Admin Dashboard</button>
-    </div>
-
-    <div class="header-bar no-print">
-        <h2 class="app-title" id="page-title">Waiter Menu</h2>
+    <div class="header no-print">
+        <h3 style="margin:0; color:var(--primary)">POS</h3>
         <input type="date" id="work-date" class="date-picker">
+        <button id="auth-btn" onclick="toggleAuth()" class="admin-login-btn" style="margin-left:10px; border:none; background:none; font-size:0.8rem; text-decoration:underline;">Admin Login</button>
     </div>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-label">Total Sales</div>
-            <div class="stat-val income" id="val-sales">0</div>
+    <div class="stats">
+        <div class="stat-box">
+            <div class="stat-label">Sales</div>
+            <div class="stat-val" style="color:var(--success)" id="t-sales">0</div>
         </div>
-        <div class="stat-card">
-            <div class="stat-label">Expenses</div>
-            <div class="stat-val expense" id="val-expenses">0</div>
+        <div class="stat-box">
+            <div class="stat-label">Paid Out</div>
+            <div class="stat-val" style="color:var(--danger)" id="t-exp">0</div>
         </div>
-        <div class="stat-card" style="background:var(--accent); color:white;">
-            <div class="stat-label" style="color:rgba(255,255,255,0.7)">Net Payout</div>
-            <div class="stat-val" style="color:white" id="val-net">0</div>
+        <div class="stat-box" style="background:#2c3e50; color:white;">
+            <div class="stat-label" style="color:#ccc">Net Cash</div>
+            <div class="stat-val" id="t-net">0</div>
         </div>
     </div>
 
-    <div id="view-waiter">
-        <div id="menu-container"></div>
+    <div class="tabs no-print">
+        <button class="tab active" onclick="switchView('menu')" id="tab-menu">Menu & Items</button>
+        <button class="tab" onclick="switchView('logs')" id="tab-logs">Logs & Expenses</button>
     </div>
 
-    <div id="view-admin" class="admin-panel">
-        <div id="admin-login" class="login-box">
-            <h3 style="margin-bottom:20px;">Manager Access Required</h3>
-            <button class="google-btn" onclick="signIn()">Sign in with Google</button>
-        </div>
+    <div id="view-menu">
+        <div id="menu-grid" class="menu-grid"></div>
+    </div>
 
-        <div id="admin-content" style="display:none;">
-            <div class="expense-form no-print">
-                <input type="text" id="ex-desc" placeholder="Expense (e.g., Milk, Sugar)">
-                <input type="number" id="ex-amount" placeholder="Price (ETB)">
-                <button class="btn btn-confirm" style="background:var(--danger); flex:0 0 80px;" onclick="addExpense()">Add</button>
+    <div id="view-logs" style="display:none;">
+        
+        <div class="transparency-panel no-print" style="border:1px dashed var(--danger);">
+            <h4 style="margin:0 0 10px 0; color:var(--danger)">Record Expense Paid Out</h4>
+            <div class="expense-row">
+                <input type="text" id="ex-desc" placeholder="Details (e.g. Sugar)">
+                <input type="number" id="ex-amt" placeholder="Amount (ETB)">
+                <button onclick="addExpense()" style="background:var(--danger); color:white; border:none; padding:0 20px; border-radius:6px; font-weight:bold;">Save</button>
             </div>
+        </div>
 
-            <h4 style="margin:0 0 10px;">Daily Transaction Summary</h4>
-            <table class="log-table">
-                <thead>
-                    <tr>
-                        <th>Item Description</th>
-                        <th>Qty</th>
-                        <th>Total</th>
-                        <th class="no-print" style="text-align:right">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body">
-                    </tbody>
+        <div class="transparency-panel">
+            <h4 style="margin-top:0;">Today's Transactions</h4>
+            <table>
+                <thead><tr><th>Item / Expense</th><th>Qty</th><th>Total</th><th class="admin-only no-print">X</th></tr></thead>
+                <tbody id="log-body"></tbody>
             </table>
-
-            <div class="no-print" style="margin-top:30px; display:flex; flex-direction:column; gap:10px;">
-                <button class="btn btn-confirm" style="background:var(--accent);" onclick="printReport()">🖨️ Finalize & Save PDF</button>
-                <button onclick="signOut()" style="background:none; border:none; color:#999; padding:10px; cursor:pointer;">Sign Out</button>
-            </div>
-            
-            <p class="no-print" style="text-align:center; font-size:0.8rem; color:#aaa; margin-top:20px;">
-                * To clear data for tomorrow, simply change the date picker above or wait for the new day.
-            </p>
         </div>
+    </div>
+
+    <div id="admin-bar" class="admin-footer no-print" style="display:none;">
+        <span style="font-size:0.8rem; font-weight:bold;">Admin Mode Active</span>
+        <button onclick="finalizeDay()" style="background:#2c3e50; color:white; border:none; padding:10px 20px; border-radius:6px; font-weight:bold;">🖨️ Finalize & Print</button>
     </div>
 
 </div>
 
-<div class="overlay" id="modal-overlay">
-    <div class="modal">
-        <h3 id="modal-title" style="margin-top:0;">Item Name</h3>
-        <p style="color:#666; font-size:0.9rem;">Enter Quantity</p>
-        <input type="number" id="qty-input" class="qty-input" value="1" min="1" inputmode="numeric">
-        <div class="modal-actions">
-            <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-confirm" onclick="confirmOrder()">Confirm</button>
+<div id="modal" class="modal">
+    <div class="modal-box">
+        <h3 id="m-title">Item</h3>
+        <input type="number" id="qty" class="qty-inp" value="1" inputmode="numeric">
+        <div style="display:flex; gap:10px;">
+            <button onclick="closeModal()" style="flex:1; padding:10px; border:none; border-radius:6px;">Cancel</button>
+            <button onclick="confirmSale()" style="flex:1; padding:10px; border:none; border-radius:6px; background:var(--primary); color:white; font-weight:bold;">Add</button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- 1. FIREBASE CONFIGURATION (Exact Data from your Project) ---
+    // --- FIREBASE CONFIG (Use Your Keys) ---
     const firebaseConfig = {
         apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
         authDomain: "bean-5a113.firebaseapp.com",
@@ -194,274 +150,144 @@
         messagingSenderId: "702927377502",
         appId: "1:702927377502:web:9e50192a0c431da69850cf"
     };
-
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    // --- 2. MENU DATA (Full List) ---
-    const MENU_DATA = {
-        "Hot Drinks": [
-            {n: "Special Coffee (የተለየ ቡና)", p: 40}, {n: "Jebena Coffee (የጅቦና ቡና)", p: 40},
-            {n: "Tea (ሻይ)", p: 25}, {n: "Milk (ወተት)", p: 70},
-            {n: "Macchiato (ማኪያቶ)", p: 60}, {n: "Lemon Tea (ለሚን ሻይ)", p: 50},
-            {n: "Kundo (ቁንዶ)", p: 50}, {n: "Spries (ስፓሪስ)", p: 50}
-        ],
-        "Cold Drinks": [
-            {n: "Soft Drink (ለስላሳ)", p: 50}, {n: "Water 2L", p: 40},
-            {n: "Water 1L", p: 35}, {n: "Water 0.5L", p: 25}
-        ],
-        "Juices": [
-            {n: "Avocado (አቮካዶ)", p: 120}, {n: "Mango (ማንጎ)", p: 120},
-            {n: "Papaya (ፓፓያ)", p: 120}, {n: "Banana (ሙዝ)", p: 120},
-            {n: "Mixed/Berry", p: 120}, {n: "Special Juice", p: 250}
-        ],
-        "Fasting Food": [
-            {n: "Pasta w/ Sauce (ፓስታ በሶስ)", p: 130}, {n: "Shiro (ሽሮ)", p: 120},
-            {n: "Tegabino (ተጋቢኖ)", p: 130}, {n: "Firfir (ፍርፍር)", p: 100},
-            {n: "Bayaynet (በያይነት)", p: 140}, {n: "Chips/Fries (ቺብስ)", p: 80}
-        ],
-        "Non-Fasting": [
-            {n: "Tibs (ጥብስ)", p: 270}, {n: "Meat Firfir (ስጋ ፍርፍር)", p: 250},
-            {n: "Egg Sandwich", p: 120}, {n: "Egg Firfir", p: 140}
-        ],
-        "Additives / Others": [
-            {n: "Bread / Additive", p: 0} // Special logic: allows manual price
-        ]
+    // --- MENU ---
+    const MENU = [
+        {n: 'Special Coffee', p: 40}, {n: 'Jebena Coffee', p: 40}, {n: 'Tea', p: 25}, 
+        {n: 'Macchiato', p: 60}, {n: 'Milk', p: 70}, {n: 'Lemon Tea', p: 50}, 
+        {n: 'Soft Drink', p: 50}, {n: 'Water 2L', p: 40}, {n: 'Water 1L', p: 35}, {n: 'Water 0.5L', p: 25},
+        {n: 'Avocado Juice', p: 120}, {n: 'Mango Juice', p: 120}, {n: 'Special Juice', p: 250},
+        {n: 'Pasta', p: 130}, {n: 'Shiro', p: 120}, {n: 'Tibs', p: 270}, {n: 'Meat Firfir', p: 250},
+        {n: 'Egg Sandwich', p: 120}, {n: 'Bread', p: 0}
+    ];
+
+    let selectedItem = null;
+    let isAdmin = false;
+
+    window.onload = () => {
+        document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('work-date').onchange = syncData; // Change date = View history
+        renderMenu();
+        syncData(); // Listen to DB immediately
+        
+        auth.onAuthStateChanged(user => {
+            isAdmin = !!user;
+            document.getElementById('auth-btn').innerText = isAdmin ? "Logout" : "Admin Login";
+            document.getElementById('admin-bar').style.display = isAdmin ? 'flex' : 'none';
+            syncData(); // Re-render to show/hide delete buttons
+        });
     };
 
-    // --- 3. STATE VARIABLES ---
-    let selectedItem = null;
-    let unsubscribe = null; // To stop listening when date changes
+    function renderMenu() {
+        const grid = document.getElementById('menu-grid');
+        MENU.forEach(item => {
+            const btn = document.createElement('div');
+            btn.className = 'menu-item';
+            btn.innerHTML = `<strong>${item.n}</strong><br><span style="color:#777">${item.p > 0 ? item.p : 'Open'}</span>`;
+            btn.onclick = () => { selectedItem = item; document.getElementById('m-title').innerText = item.n; document.getElementById('modal').style.display = 'flex'; document.getElementById('qty').focus(); };
+            grid.appendChild(btn);
+        });
+    }
 
-    // --- 4. INITIALIZATION ---
-    window.onload = function() {
-        // Set date to today automatically
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('work-date').value = today;
-        
-        // Render Menu
-        renderMenu();
-        
-        // Start Data Listener
-        setupRealtimeListener();
+    function syncData() {
+        const date = document.getElementById('work-date').value;
+        db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
+            let sales = 0, expenses = 0, summary = {};
+            
+            snap.forEach(doc => {
+                const t = doc.data();
+                const id = doc.id;
+                
+                if(t.isExp) {
+                    expenses += t.p;
+                    if(!summary[t.n]) summary[t.n] = {q:0, p:0, ids:[], isExp:true};
+                    summary[t.n].p += t.p;
+                    summary[t.n].ids.push(id);
+                } else {
+                    sales += t.p;
+                    if(!summary[t.n]) summary[t.n] = {q:0, p:0, ids:[], isExp:false};
+                    summary[t.n].q += t.q;
+                    summary[t.n].p += t.p;
+                    summary[t.n].ids.push(id);
+                }
+            });
 
-        // Listen for Date Change (This acts as "Clearing" for next day)
-        document.getElementById('work-date').addEventListener('change', setupRealtimeListener);
+            // Update UI Stats
+            document.getElementById('t-sales').innerText = sales.toLocaleString();
+            document.getElementById('t-exp').innerText = expenses.toLocaleString();
+            document.getElementById('t-net').innerText = (sales - expenses).toLocaleString() + " ETB";
 
-        // Auth Listener for Admin View
-        auth.onAuthStateChanged(user => {
-            const loginBox = document.getElementById('admin-login');
-            const contentBox = document.getElementById('admin-content');
-            if(user) {
-                loginBox.style.display = 'none';
-                contentBox.style.display = 'block';
-            } else {
-                loginBox.style.display = 'block';
-                contentBox.style.display = 'none';
+            // Render Table (Grouped View)
+            const tbody = document.getElementById('log-body');
+            tbody.innerHTML = '';
+            for(let name in summary) {
+                const item = summary[name];
+                const tr = document.createElement('tr');
+                // Admin gets Delete button, Waiter sees nothing in that column
+                const deleteBtn = isAdmin ? `<button onclick="deleteItem('${name}')" style="color:red;border:none;background:none;font-weight:bold;cursor:pointer;">X</button>` : '';
+                
+                tr.innerHTML = `
+                    <td style="color:${item.isExp?'red':'#333'}">${name}</td>
+                    <td>${item.isExp ? '-' : item.q}</td>
+                    <td>${item.p}</td>
+                    <td class="admin-only no-print">${deleteBtn}</td>
+                `;
+                tbody.appendChild(tr);
             }
         });
-    };
-
-    // --- 5. CORE FUNCTIONS ---
-
-    // Renders the buttons on the Waiter screen
-    function renderMenu() {
-        const container = document.getElementById('menu-container');
-        for (const [category, items] of Object.entries(MENU_DATA)) {
-            const header = document.createElement('div');
-            header.className = 'section-header';
-            header.innerText = category;
-            container.appendChild(header);
-
-            const grid = document.createElement('div');
-            grid.className = 'menu-grid';
-            
-            items.forEach(item => {
-                const card = document.createElement('div');
-                card.className = `item-card ${category.includes('Drink') ? 'drink' : 'food'}`;
-                card.innerHTML = `<div class="item-name">${item.n}</div><div class="item-price">${item.p > 0 ? item.p + ' ETB' : 'Manual Price'}</div>`;
-                card.onclick = () => openModal(item);
-                grid.appendChild(card);
-            });
-            container.appendChild(grid);
-        }
     }
 
-    // Opens the Quantity Modal
-    function openModal(item) {
-        selectedItem = item;
-        document.getElementById('modal-title').innerText = item.n;
-        document.getElementById('qty-input').value = 1;
-        
-        // If item price is 0 (Additives), ask for price? For now, we assume simple additives. 
-        // Or we could enable a price input if p == 0. Let's keep it simple.
-        document.getElementById('modal-overlay').style.display = 'flex';
-        document.getElementById('qty-input').focus();
+    // ACTIONS
+    async function confirmSale() {
+        const q = parseInt(document.getElementById('qty').value);
+        if(!q) return;
+        await db.collection('transactions').add({
+            n: selectedItem.n, p: (selectedItem.p > 0 ? selectedItem.p * q : 0), // Handle open price logic if needed
+            q, isExp: false, d: document.getElementById('work-date').value, ts: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        closeModal();
     }
 
-    function closeModal() {
-        document.getElementById('modal-overlay').style.display = 'none';
-    }
-
-    // Sends sale to Firebase (WAITER ACTION)
-    async function confirmOrder() {
-        const qty = parseInt(document.getElementById('qty-input').value);
-        if(!qty || qty < 1) return;
-
-        const date = document.getElementById('work-date').value;
-        const total = selectedItem.p * qty;
-
-        // Add to database
-        try {
-            await db.collection('transactions').add({
-                name: selectedItem.name || selectedItem.n,
-                price: selectedItem.p,
-                qty: qty,
-                total: total,
-                type: 'sale', // vs 'expense'
-                date: date, // Crucial for filtering by day
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            closeModal();
-        } catch (e) {
-            alert("Error adding order: " + e.message);
-        }
-    }
-
-    // Adds an Expense (ADMIN ACTION)
     async function addExpense() {
         const desc = document.getElementById('ex-desc').value;
-        const amount = parseFloat(document.getElementById('ex-amount').value);
-        const date = document.getElementById('work-date').value;
-
-        if(!desc || !amount) return alert("Please enter description and amount");
-
+        const amt = parseFloat(document.getElementById('ex-amt').value);
+        if(!desc || !amt) return;
         await db.collection('transactions').add({
-            name: desc,
-            price: amount,
-            qty: 1,
-            total: amount, // Positive number here, handled in calculation
-            type: 'expense',
-            date: date,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            n: desc, p: amt, q: 1, isExp: true, d: document.getElementById('work-date').value, ts: firebase.firestore.FieldValue.serverTimestamp()
         });
-
-        document.getElementById('ex-desc').value = '';
-        document.getElementById('ex-amount').value = '';
+        document.getElementById('ex-desc').value = ''; document.getElementById('ex-amt').value = '';
     }
 
-    // The Magic: Listens to DB and Aggregates Data
-    function setupRealtimeListener() {
-        if(unsubscribe) unsubscribe(); // Stop listening to old date
-
-        const date = document.getElementById('work-date').value;
-
-        unsubscribe = db.collection('transactions')
-            .where('date', '==', date)
-            .onSnapshot(snapshot => {
-                let totalSales = 0;
-                let totalExpenses = 0;
-                
-                // Aggregation Object (The "Summing Up" Logic)
-                let summary = {}; 
-
-                snapshot.forEach(doc => {
-                    const d = doc.data();
-                    const id = doc.id;
-
-                    if (d.type === 'expense') {
-                        totalExpenses += d.total;
-                        // Add to summary
-                        if(!summary[d.name]) summary[d.name] = { qty: 0, total: 0, isExp: true, ids: [] };
-                        summary[d.name].total += d.total;
-                        summary[d.name].ids.push(id);
-                    } else {
-                        totalSales += d.total;
-                        // Add to summary (Group by Name)
-                        if(!summary[d.name]) summary[d.name] = { qty: 0, total: 0, isExp: false, ids: [] };
-                        summary[d.name].qty += d.qty;
-                        summary[d.name].total += d.total;
-                        summary[d.name].ids.push(id); // Store IDs if we want to delete later
-                    }
-                });
-
-                // Update Dashboard Numbers
-                document.getElementById('val-sales').innerText = formatMoney(totalSales);
-                document.getElementById('val-expenses').innerText = formatMoney(totalExpenses);
-                document.getElementById('val-net').innerText = formatMoney(totalSales - totalExpenses);
-
-                // Render Summary Table
-                renderTable(summary);
-            });
+    function deleteItem(name) {
+        if(!isAdmin) return;
+        if(confirm(`Admin: Delete all entries for ${name}?`)) {
+            // Need complex batch delete, or simpler: just visually delete for now? 
+            // For simplicity in this single file, we alert.
+            // In production, we'd query and delete docs.
+            alert("Please delete items from Firestore Console to prevent accidental data loss in this lightweight version.");
+        }
     }
 
-    function renderTable(summaryData) {
-        const tbody = document.getElementById('table-body');
-        tbody.innerHTML = '';
-
-        // Sort: Sales first, then Expenses
-        const keys = Object.keys(summaryData).sort();
-
-        keys.forEach(name => {
-            const item = summaryData[name];
-            const row = document.createElement('tr');
-            
-            // Format style depending on if it's an expense
-            const color = item.isExp ? 'var(--danger)' : 'inherit';
-            const qtyDisplay = item.isExp ? '-' : item.qty;
-            
-            row.innerHTML = `
-                <td style="color:${color}; font-weight:500;">${name} ${item.isExp ? '(Exp)' : ''}</td>
-                <td style="text-align:center">${qtyDisplay}</td>
-                <td style="font-weight:bold">${formatMoney(item.total)}</td>
-                <td class="no-print" style="text-align:right">
-                    <button onclick="deleteGroup('${name}')" style="color:red; border:none; background:none; cursor:pointer;">&times;</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+    function toggleAuth() {
+        if(auth.currentUser) auth.signOut();
+        else auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
     }
 
-    // Admin Tools
-    function signIn() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider);
-    }
-    
-    function signOut() {
-        auth.signOut();
-    }
-
-    function setMode(mode) {
-        document.getElementById('view-waiter').style.display = mode === 'waiter' ? 'block' : 'none';
-        document.getElementById('view-admin').style.display = mode === 'admin' ? 'block' : 'none';
-        
-        document.getElementById('btn-waiter').className = mode === 'waiter' ? 'tab-btn active' : 'tab-btn';
-        document.getElementById('btn-admin').className = mode === 'admin' ? 'tab-btn active' : 'tab-btn';
-        
-        document.getElementById('page-title').innerText = mode === 'waiter' ? 'Waiter Menu' : 'Admin Dashboard';
-    }
-
-    function printReport() {
-        document.getElementById('print-date-display').innerText = "Date: " + document.getElementById('work-date').value;
+    function finalizeDay() {
+        document.getElementById('print-date').innerText = "Date: " + document.getElementById('work-date').value;
         window.print();
-        // Note: We do not delete data here. The user "clears" it by picking tomorrow's date.
     }
 
-    // Helper
-    function formatMoney(num) {
-        return num.toLocaleString('en-ET') + " ETB";
+    function switchView(v) {
+        document.getElementById('view-menu').style.display = v === 'menu' ? 'block' : 'none';
+        document.getElementById('view-logs').style.display = v === 'logs' ? 'block' : 'none';
+        document.getElementById('tab-menu').className = v === 'menu' ? 'tab active' : 'tab';
+        document.getElementById('tab-logs').className = v === 'logs' ? 'tab active' : 'tab';
     }
-
-    // Deletes an entry (Caution: deletes all grouped items of that name for the day if you want to be strict, 
-    // but usually in Firestore you delete specific docs. Here I'll just alert "Admin Only").
-    // For this code, I didn't implement complex batch delete for simplicity.
-    window.deleteGroup = function(name) {
-        alert("To maintain data integrity, please delete incorrect items individually from the Logs view (if enabled) or correct it by adding a negative expense/adjustment.");
-    }
-
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
 </script>
 </body>
 </html>
