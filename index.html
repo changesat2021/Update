@@ -1,218 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bean & Bloom POS - Final</title>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <style>
-        :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; }
-        body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
-        .container { max-width: 650px; margin: 0 auto; padding: 15px; }
-        
-        /* UI Components */
-        header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
-        .val { font-size: 1.1rem; font-weight: 800; display: block; }
-        .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
-        
-        /* Menu */
-        .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
-        .food-btn { border-left-color: var(--food); }
-        .add-btn { border-left-color: #7f8c8d; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bean & Bloom POS - Final</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <style>
+        :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; }
+        body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
+        .container { max-width: 650px; margin: 0 auto; padding: 15px; }
+        
+        /* UI Components */
+        header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
+        .val { font-size: 1.1rem; font-weight: 800; display: block; }
+        .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
+        
+        /* Menu */
+        .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
+        .food-btn { border-left-color: var(--food); }
+        .add-btn { border-left-color: #7f8c8d; }
 
-        /* Tables */
-        table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
-        .print-only { display: none; }
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        .print-only { display: none; }
 
-        @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { background: white; }
-            .container { max-width: 100%; padding: 0; }
-            .card { border: none; }
-        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
+            .container { max-width: 100%; padding: 0; }
+            .card { border: none; }
+        }
 
-        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
-        .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
-    </style>
+        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
+        .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
+    </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="print-only" style="text-align:center;">
-        <h1 style="margin:0;">BEAN & BLOOM COFFEEHOUSE</h1>
-        <p id="pdf-date" style="font-weight:bold;"></p>
-        <hr>
-        <h3>DAILY SALES SUMMARY</h3>
-    </div>
+    <div class="print-only" style="text-align:center;">
+        <h1 style="margin:0;">BEAN & BLOOM COFFEEHOUSE</h1>
+        <p id="pdf-date" style="font-weight:bold;"></p>
+        <hr>
+        <h3>DAILY SALES SUMMARY</h3>
+    </div>
 
-    <header class="no-print">
-        <h2 style="color:var(--primary)">☕ Bean & Bloom</h2>
-        <input type="date" id="work-date">
-    </header>
+    <header class="no-print">
+        <h2 style="color:var(--primary)">☕ Bean & Bloom</h2>
+        <input type="date" id="work-date">
+    </header>
 
-    <div class="dashboard">
-        <div class="card"><span class="lbl">Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
-        <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
-        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
-    </div>
+    <div class="dashboard">
+        <div class="card"><span class="lbl">Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
+        <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
+        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
+    </div>
 
-    <div class="no-print">
-        <div class="section-title">Hot & Cold Drinks</div><div id="grid-hot" class="menu-grid"></div>
-        <div class="section-title">Special Juices</div><div id="grid-juices" class="menu-grid"></div>
-        <div class="section-title">Fasting Food</div><div id="grid-fasting" class="menu-grid"></div>
-        <div class="section-title">Non-Fasting Food</div><div id="grid-nonfast" class="menu-grid"></div>
-        <div class="section-title">Additives & Snacks</div><div id="grid-add" class="menu-grid"></div>
+    <div class="no-print">
+        <div class="section-title">Hot & Cold Drinks</div><div id="grid-hot" class="menu-grid"></div>
+        <div class="section-title">Special Juices</div><div id="grid-juices" class="menu-grid"></div>
+        <div class="section-title">Fasting Food</div><div id="grid-fasting" class="menu-grid"></div>
+        <div class="section-title">Non-Fasting Food</div><div id="grid-nonfast" class="menu-grid"></div>
+        <div class="section-title">Additives & Snacks</div><div id="grid-add" class="menu-grid"></div>
 
-        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed red;">
-            <p style="font-weight:bold; color:red; font-size:0.7rem; margin-bottom:5px;">ወጭወችን ጨምር</p>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="ex-name" placeholder="የወጭውን ምክንያት" style="flex:2; padding:8px;">
-                <input type="number" id="ex-amt" placeholder="የብሩን መጠን" style="flex:1; padding:8px;">
-            </div>
-            <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout</button>
-        </div>
-    </div>
+        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed red;">
+            <p style="font-weight:bold; color:red; font-size:0.7rem; margin-bottom:5px;">ADD EXPENSE/PAYOUT</p>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="ex-name" placeholder="Reason..." style="flex:2; padding:8px;">
+                <input type="number" id="ex-amt" placeholder="Amount" style="flex:1; padding:8px;">
+            </div>
+            <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout</button>
+        </div>
+    </div>
 
-    <div class="card" style="padding:0; margin-top:20px; overflow:hidden;">
-        <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Itemized Report</h4>
-        <table>
-            <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
-            <tbody id="log-body"></tbody>
-        </table>
-    </div>
+    <div class="card" style="padding:0; margin-top:20px; overflow:hidden;">
+        <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Itemized Report</h4>
+        <table>
+            <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
+            <tbody id="log-body"></tbody>
+        </table>
+    </div>
 
-    <div class="admin-nav no-print">
-        <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
-        <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Save PDF & Finalize</button>
-    </div>
+    <div class="admin-nav no-print">
+        <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
+        <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Save PDF & Finalize</button>
+    </div>
 </div>
 
 <div id="qty-modal" class="modal">
-    <div class="modal-content" style="background:white; padding:20px; border-radius:15px; text-align:center;">
-        <h3 id="m-item">Item</h3>
-        <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100px; text-align:center; margin:15px;">
-        <div style="display:flex; gap:10px;">
-            <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
-            <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Add</button>
-        </div>
-    </div>
+    <div class="modal-content" style="background:white; padding:20px; border-radius:15px; text-align:center;">
+        <h3 id="m-item">Item</h3>
+        <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100px; text-align:center; margin:15px;">
+        <div style="display:flex; gap:10px;">
+            <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
+            <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Add</button>
+        </div>
+    </div>
 </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
-        authDomain: "bean-5a113.firebaseapp.com",
-        projectId: "bean-5a113",
-        storageBucket: "bean-5a113.firebasestorage.app",
-        messagingSenderId: "702927377502",
-        appId: "1:702927377502:web:9e50192a0c431da69850cf"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore(), auth = firebase.auth();
-    const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
+    const firebaseConfig = {
+        apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
+        authDomain: "bean-5a113.firebaseapp.com",
+        projectId: "bean-5a113",
+        storageBucket: "bean-5a113.firebasestorage.app",
+        messagingSenderId: "702927377502",
+        appId: "1:702927377502:web:9e50192a0c431da69850cf"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore(), auth = firebase.auth();
+    const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
-    const MENU = [
-        { n: 'ቡና', p: 40, c: 'hot' }, { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
-        { n: 'ለስላሳ', p: 50, c: 'hot' }, { n: 'ውሃ 2 ሊትር', p: 40, c: 'hot' }, { n: 'ውሃ 1 ሊትር', p: 35, c: 'hot' }, { n: 'ውሃ ግማሽ', p: 25, c: 'hot' },
-        { n: 'አቮካዶ ጁስ', p: 120, c: 'juices' }, { n: 'ማንጎ ጁስ', p: 120, c: 'juices' }, { n: 'ፓፓያ ጁስ', p: 120, c: 'juices' }, { n: 'ሙዝ ጁስ', p: 120, c: 'juices' }, { n: 'አናናስ', p: 120, c: 'juices' }, { n: 'ተልባ ጁስ', p: 120, c: 'juices' }, { n: 'በሶ ጁስ', p: 120, c: 'juices' }, { n: 'ወተት በአቮካዶ', p: 200, c: 'juices' }, { n: 'ስፔሻል ጁስ', p: 250, c: 'juices' },
-        { n: 'ፓስታ በስጎ', p: 130, c: 'fasting' }, { n: 'ሽሮ', p: 120, c: 'fasting' }, { n: 'ተጋቢኖ', p: 130, c: 'fasting' }, { n: 'ሽሮ በሰላጣ', p: 180, c: 'fasting' }, { n: 'ፍርፍር', p: 100, c: 'fasting' }, { n: 'ሃፍ ሃፍ', p: 150, c: 'fasting' }, { n: 'ፉል ኖርማል', p: 90, c: 'fasting' }, { n: 'ፉል በአቮካዶ', p: 90, c: 'fasting' }, { n: 'ፉል በእንቁላል', p: 120, c: 'fasting' }, { n: 'ቲማቲም ለብለብ', p: 100, c: 'fasting' }, { n: 'በያይነት', p: 140, c: 'fasting' }, { n: 'ፎሶሊያ', p: 160, c: 'fasting' }, { n: 'አዚፋ', p: 160, c: 'fasting' }, { n: 'ቺፕስ 25', p: 25, c: 'fasting' }, { n: 'ቺፕስ 35', p: 35, c: 'fasting' }, { n: 'ቺፕስ 80', p: 80, c: 'fasting' }, { n: 'እርጥብ', p: 90, c: 'fasting' }, { n: 'እርጥብ ስፔሻል', p: 120, c: 'fasting' }, { n: 'ፓስታ በአትክልት', p: 140, c: 'fasting' }, { n: 'ሩዝ በአትክልት', p: 140, c: 'fasting' },
-        { n: 'ጥብስ', p: 270, c: 'nonfast' }, { n: 'ስጋ ፍርፍር', p: 250, c: 'nonfast' }, { n: 'ፓስታ በስጋ', p: 250, c: 'nonfast' }, { n: 'ፓስታ በ እንቁላል', p: 200, c: 'nonfast' }, { n: 'እንቁላል ሳንድዊች', p: 120, c: 'nonfast' }, { n: 'ጥብስ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'እንቁላል በስጋ', p: 250, c: 'nonfast' }, { n: 'እንቁላል ፍርፍር', p: 140, c: 'nonfast' }, { n: 'ቋንጣ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'ፉል በቅቤ', p: 140, c: 'nonfast' }, { n: 'ሽሮ በቅቤ', p: 180, c: 'nonfast' },
-        { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }
-    ];
+    const MENU = [
+        { n: 'ቡና', p: 40, c: 'hot' }, { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
+        { n: 'ለስላሳ', p: 50, c: 'hot' }, { n: 'ውሃ 2 ሊትር', p: 40, c: 'hot' }, { n: 'ውሃ 1 ሊትር', p: 35, c: 'hot' }, { n: 'ውሃ ግማሽ', p: 25, c: 'hot' },
+        { n: 'አቮካዶ ጁስ', p: 120, c: 'juices' }, { n: 'ማንጎ ጁስ', p: 120, c: 'juices' }, { n: 'ፓፓያ ጁስ', p: 120, c: 'juices' }, { n: 'ሙዝ ጁስ', p: 120, c: 'juices' }, { n: 'አናናስ', p: 120, c: 'juices' }, { n: 'ተልባ ጁስ', p: 120, c: 'juices' }, { n: 'በሶ ጁስ', p: 120, c: 'juices' }, { n: 'ወተት በአቮካዶ', p: 200, c: 'juices' }, { n: 'ስፔሻል ጁስ', p: 250, c: 'juices' },
+        { n: 'ፓስታ በስጎ', p: 130, c: 'fasting' }, { n: 'ሽሮ', p: 120, c: 'fasting' }, { n: 'ተጋቢኖ', p: 130, c: 'fasting' }, { n: 'ሽሮ በሰላጣ', p: 180, c: 'fasting' }, { n: 'ፍርፍር', p: 100, c: 'fasting' }, { n: 'ሃፍ ሃፍ', p: 150, c: 'fasting' }, { n: 'ፉል ኖርማል', p: 90, c: 'fasting' }, { n: 'ፉል በአቮካዶ', p: 90, c: 'fasting' }, { n: 'ፉል በእንቁላል', p: 120, c: 'fasting' }, { n: 'ቲማቲም ለብለብ', p: 100, c: 'fasting' }, { n: 'በያይነት', p: 140, c: 'fasting' }, { n: 'ፎሶሊያ', p: 160, c: 'fasting' }, { n: 'አዚፋ', p: 160, c: 'fasting' }, { n: 'ቺፕስ 25', p: 25, c: 'fasting' }, { n: 'ቺፕስ 35', p: 35, c: 'fasting' }, { n: 'ቺፕስ 80', p: 80, c: 'fasting' }, { n: 'እርጥብ', p: 90, c: 'fasting' }, { n: 'እርጥብ ስፔሻል', p: 120, c: 'fasting' }, { n: 'ፓስታ በአትክልት', p: 140, c: 'fasting' }, { n: 'ሩዝ በአትክልት', p: 140, c: 'fasting' },
+        { n: 'ጥብስ', p: 270, c: 'nonfast' }, { n: 'ስጋ ፍርፍር', p: 250, c: 'nonfast' }, { n: 'ፓስታ በስጋ', p: 250, c: 'nonfast' }, { n: 'ፓስታ በ እንቁላል', p: 200, c: 'nonfast' }, { n: 'እንቁላል ሳንድዊች', p: 120, c: 'nonfast' }, { n: 'ጥብስ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'እንቁላል በስጋ', p: 250, c: 'nonfast' }, { n: 'እንቁላል ፍርፍር', p: 140, c: 'nonfast' }, { n: 'ቋንጣ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'ፉል በቅቤ', p: 140, c: 'nonfast' }, { n: 'ሽሮ በቅቤ', p: 180, c: 'nonfast' },
+        { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }
+    ];
 
-    let sel = null, isAdmin = false;
+    let sel = null, isAdmin = false;
 
-    window.onload = () => {
-        document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
-        document.getElementById('work-date').onchange = sync;
-        renderMenu();
-        auth.onAuthStateChanged(user => {
-            isAdmin = (user && user.uid === adminUID);
-            document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
-            document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
-            sync();
-        });
-    };
+    window.onload = () => {
+        document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('work-date').onchange = sync;
+        renderMenu();
+        auth.onAuthStateChanged(user => {
+            isAdmin = (user && user.uid === adminUID);
+            document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
+            document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
+            sync();
+        });
+    };
 
-    function renderMenu() {
-        MENU.forEach(i => {
-            const btn = document.createElement('div');
-            btn.className = `menu-btn ${['fasting','nonfast'].includes(i.c) ? 'food-btn' : (i.c=='add'?'add-btn':'')}`;
-            btn.innerHTML = `<strong>${i.n}</strong><br><small>${i.p} ETB</small>`;
-            btn.onclick = () => { sel = i; document.getElementById('m-item').innerText = i.n; document.getElementById('qty-modal').style.display='flex'; };
-            document.getElementById('grid-' + i.c).appendChild(btn);
-        });
-    }
+    function renderMenu() {
+        MENU.forEach(i => {
+            const btn = document.createElement('div');
+            btn.className = `menu-btn ${['fasting','nonfast'].includes(i.c) ? 'food-btn' : (i.c=='add'?'add-btn':'')}`;
+            btn.innerHTML = `<strong>${i.n}</strong><br><small>${i.p} ETB</small>`;
+            btn.onclick = () => { sel = i; document.getElementById('m-item').innerText = i.n; document.getElementById('qty-modal').style.display='flex'; };
+            document.getElementById('grid-' + i.c).appendChild(btn);
+        });
+    }
 
-    async function confirmSale() {
-        const q = parseInt(document.getElementById('m-qty').value);
-        if(!q) return;
-        await db.collection('transactions').add({ n: sel.n, q: q, p: sel.p * q, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
-        closeModal();
-    }
+    async function confirmSale() {
+        const q = parseInt(document.getElementById('m-qty').value);
+        if(!q) return;
+        await db.collection('transactions').add({ n: sel.n, q: q, p: sel.p * q, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
+        closeModal();
+    }
 
-    async function saveEx() {
-        const n = document.getElementById('ex-name').value, p = parseFloat(document.getElementById('ex-amt').value);
-        if(!n || !p) return;
-        await db.collection('transactions').add({ n: "OUT: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: true, ts: Date.now() });
-        document.getElementById('ex-name').value = ''; document.getElementById('ex-amt').value = '';
-    }
+    async function saveEx() {
+        const n = document.getElementById('ex-name').value, p = parseFloat(document.getElementById('ex-amt').value);
+        if(!n || !p) return;
+        await db.collection('transactions').add({ n: "OUT: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: true, ts: Date.now() });
+        document.getElementById('ex-name').value = ''; document.getElementById('ex-amt').value = '';
+    }
 
-    function sync() {
-        const date = document.getElementById('work-date').value;
-        db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
-            let s=0, e=0, html='', sum = {};
-            snap.forEach(doc => {
-                const t = doc.data();
-                if(t.ex) e += t.p; else s += t.p;
-                if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
-                sum[t.n].q += t.q; sum[t.n].p += t.p;
-            });
-            for (let name in sum) {
-                const item = sum[name];
-                html += `<tr><td style="color:${item.isEx?'red':'black'}">${name}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
-            }
-            document.getElementById('log-body').innerHTML = html;
-            document.getElementById('total-s').innerText = s;
-            document.getElementById('total-e').innerText = e;
-            document.getElementById('total-n').innerText = (s - e) + " ETB";
-        });
-    }
+    function sync() {
+        const date = document.getElementById('work-date').value;
+        db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
+            let s=0, e=0, html='', sum = {};
+            snap.forEach(doc => {
+                const t = doc.data();
+                if(t.ex) e += t.p; else s += t.p;
+                if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
+                sum[t.n].q += t.q; sum[t.n].p += t.p;
+            });
+            for (let name in sum) {
+                const item = sum[name];
+                html += `<tr><td style="color:${item.isEx?'red':'black'}">${name}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
+            }
+            document.getElementById('log-body').innerHTML = html;
+            document.getElementById('total-s').innerText = s;
+            document.getElementById('total-e').innerText = e;
+            document.getElementById('total-n').innerText = (s - e) + " ETB";
+        });
+    }
 
-    function initiatePrint() {
-        document.getElementById('pdf-date').innerText = "DATE: " + document.getElementById('work-date').value;
-        window.print();
-        setTimeout(() => {
-            if(confirm("Report Saved? Clear all daily records for a fresh start?")) clearDay();
-        }, 1500);
-    }
+    function initiatePrint() {
+        document.getElementById('pdf-date').innerText = "DATE: " + document.getElementById('work-date').value;
+        window.print();
+        setTimeout(() => {
+            if(confirm("Report Saved? Clear all daily records for a fresh start?")) clearDay();
+        }, 1500);
+    }
 
-    async function clearDay() {
-        const snap = await db.collection('transactions').where('d', '==', document.getElementById('work-date').value).get();
-        const batch = db.batch();
-        snap.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-        alert("System Brushed. Ready for next day.");
-    }
+    async function clearDay() {
+        const snap = await db.collection('transactions').where('d', '==', document.getElementById('work-date').value).get();
+        const batch = db.batch();
+        snap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        alert("System Brushed. Ready for next day.");
+    }
 
-    async function delDoc(id) { if(confirm("Admin: Delete?")) await db.collection('transactions').doc(id).delete(); }
-    async function handleAuth() {
-        if(auth.currentUser) { auth.signOut(); } 
-        else {
-            const email = prompt("Admin Email:"), pass = prompt("Password:");
-            if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
-        }
-    }
-    function closeModal() { document.getElementById('qty-modal').style.display='none'; document.getElementById('m-qty').value = 1; }
+    async function delDoc(id) { if(confirm("Admin: Delete?")) await db.collection('transactions').doc(id).delete(); }
+    async function handleAuth() {
+        if(auth.currentUser) { auth.signOut(); } 
+        else {
+            const email = prompt("Admin Email:"), pass = prompt("Password:");
+            if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
+        }
+    }
+    function closeModal() { document.getElementById('qty-modal').style.display='none'; document.getElementById('m-qty').value = 1; }
 </script>
 </body>
 </html>
