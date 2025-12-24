@@ -4,98 +4,86 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bean & Bloom POS</title>
-    
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-
     <style>
-        :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #ffffff; --border: #e0e0e0; --radius: 8px; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body { background-color: #f8f9fa; color: var(--accent); padding-bottom: 100px; }
-        .container { max-width: 900px; margin: 0 auto; padding: 15px; }
-        
-        header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 15px; border-radius: var(--radius); margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
-        .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid var(--border); }
-        .card-value { font-size: 1.1rem; font-weight: 800; display: block; }
-        .card-label { font-size: 0.65rem; color: #777; text-transform: uppercase; }
-
-        .section-title { font-size: 0.8rem; color: #555; margin: 15px 0 8px; border-bottom: 2px solid #ddd; padding-bottom: 3px; font-weight: bold; }
-        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-        .menu-btn { background: var(--white); border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: var(--radius); padding: 12px 8px; cursor: pointer; }
-        .menu-btn.food-btn { border-left-color: var(--food); }
-        .menu-btn h3 { font-size: 0.85rem; margin-bottom: 2px; }
-
-        .expense-form { background: #fff; padding: 15px; border-radius: var(--radius); margin: 20px 0; border: 1px dashed #c0392b; }
-        .form-row { display: flex; gap: 5px; margin-bottom: 10px; }
-        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; }
-
-        table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
-        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
-        .del-btn { color: red; border: none; background: none; font-weight: bold; cursor: pointer; }
-
-        .admin-footer { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: center; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 999; }
-        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 300px; text-align: center; }
-        
-        @media print { .no-print { display: none !important; } .container { width: 100%; } }
+        :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; }
+        body { margin: 0; font-family: -apple-system, sans-serif; background: #f4f4f4; color: var(--accent); padding-bottom: 80px; }
+        .container { max-width: 600px; margin: 0 auto; padding: 15px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: var(--white); padding: 12px; border-radius: var(--radius); }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .card { background: var(--white); padding: 15px; border-radius: var(--radius); text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .val { font-size: 1.2rem; font-weight: 800; display: block; }
+        .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+        .section-title { font-size: 0.9rem; font-weight: bold; margin: 20px 0 10px; color: var(--primary); border-left: 4px solid var(--primary); padding-left: 10px; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 15px; border-radius: var(--radius); text-align: center; cursor: pointer; }
+        .food-btn { border-left: 5px solid var(--food); }
+        .expense-box { background: #fff1f1; border: 1px dashed #ff4d4d; padding: 15px; border-radius: var(--radius); margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; background: var(--white); margin-top: 15px; border-radius: var(--radius); overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .del-x { color: red; font-weight: bold; border: none; background: none; cursor: pointer; }
+        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; text-align: center; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 80%; max-width: 300px; text-align: center; }
+        @media print { .no-print { display: none !important; } }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header class="no-print">
-        <h1 style="color:var(--primary)">☕ Bean & Bloom</h1>
-        <input type="date" id="work-date">
+        <h2 style="color:var(--primary)">Bean & Bloom</h2>
+        <input type="date" id="work-date" style="padding:5px;">
     </header>
 
     <div class="dashboard">
-        <div class="card"><span class="card-label">Sales</span><span class="card-value" id="total-sales" style="color:green">0</span></div>
-        <div class="card"><span class="card-label">Paid Out</span><span class="card-value" id="total-expenses" style="color:red">0</span></div>
-        <div class="card" style="background:var(--accent); color:white"><span class="card-label" style="color:#aaa">Net Cash</span><span class="card-value" id="net-cash">0</span></div>
+        <div class="card"><span class="lbl">Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
+        <div class="card"><span class="lbl">Payouts</span><span class="val" id="total-e" style="color:red">0</span></div>
+        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net</span><span class="val" id="total-n">0</span></div>
     </div>
 
     <div class="no-print">
-        <div class="section-title">Drinks</div><div id="grid-drinks" class="menu-grid"></div>
-        <div class="section-title">Food</div><div id="grid-food" class="menu-grid"></div>
+        <div class="section-title">Drinks & Juices</div>
+        <div id="grid-drinks" class="menu-grid"></div>
         
-        <div class="expense-form">
-            <p style="font-weight:bold; color:red; font-size:0.8rem; margin-bottom:8px;">RECORD EXPENSE / PAYOUT</p>
-            <div class="form-row">
-                <input type="text" id="exp-name" placeholder="Reason (e.g. Milk)">
-                <input type="number" id="exp-price" placeholder="Amount">
-            </div>
-            <button onclick="saveExpense()" style="width:100%; background:red; color:white; border:none; padding:12px; border-radius:5px; font-weight:bold;">Save Payout</button>
+        <div class="section-title">Food & Snacks</div>
+        <div id="grid-food" class="menu-grid"></div>
+
+        <div class="expense-box">
+            <h4 style="color:red; margin-bottom:10px;">Daily Expenses / Payouts</h4>
+            <input type="text" id="ex-name" placeholder="Reason (Milk, Rent...)" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd;">
+            <input type="number" id="ex-amt" placeholder="Amount (ETB)" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd;">
+            <button onclick="saveEx()" style="width:100%; background:red; color:white; padding:12px; border:none; border-radius:5px; font-weight:bold;">Save Payout</button>
         </div>
     </div>
 
-    <div class="card" style="padding:0; overflow:hidden;">
+    <div class="card" style="padding:0; margin-top:20px;">
         <table>
             <thead><tr><th>Item</th><th>Qty</th><th>ETB</th><th class="adm-only"></th></tr></thead>
             <tbody id="log-body"></tbody>
         </table>
     </div>
 
-    <div class="admin-footer no-print">
-        <button id="auth-btn" onclick="handleAuth()" style="margin-right:10px; padding:10px; border:none; background:none; text-decoration:underline;">Admin Login</button>
-        <button onclick="window.print()" id="print-btn" style="display:none; background:var(--accent); color:white; border:none; padding:10px 20px; border-radius:5px; font-weight:bold;">Print Report</button>
+    <div class="admin-nav no-print">
+        <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; color:blue; text-decoration:underline;">Admin Login</button>
+        <button id="print-btn" onclick="window.print()" style="display:none; margin-left:20px; background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:5px;">Print Daily Payout</button>
     </div>
 </div>
 
 <div id="qty-modal" class="modal">
     <div class="modal-content">
-        <h3 id="modal-title">Item Name</h3>
-        <input type="number" id="qty-input" value="1" style="font-size:2rem; text-align:center; width:100%; margin:15px 0;">
+        <h3 id="m-item">Item</h3>
+        <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100%; text-align:center; margin:20px 0;">
         <div style="display:flex; gap:10px;">
             <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
-            <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Add</button>
+            <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Confirm</button>
         </div>
     </div>
 </div>
 
 <script>
-    // YOUR FIREBASE INFO
     const firebaseConfig = {
         apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
         authDomain: "bean-5a113.firebaseapp.com",
@@ -105,107 +93,86 @@
         appId: "1:702927377502:web:9e50192a0c431da69850cf"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
+    const db = firebase.firestore(), auth = firebase.auth();
 
     const MENU = [
-        { n: 'बुና', p: 40, c: 'drinks' }, { n: 'ሻይ', p: 25, c: 'drinks' }, { n: 'ወተት', p: 70, c: 'drinks' },
-        { n: 'ማኪያቶ', p: 60, c: 'drinks' }, { n: 'ለስላሳ', p: 50, c: 'drinks' }, { n: 'ውሃ 1L', p: 35, c: 'drinks' },
-        { n: 'አቮካዶ ጁስ', p: 120, c: 'drinks' }, { n: 'ስፔሻል ጁስ', p: 250, c: 'drinks' },
-        { n: 'ፓስታ በስጎ', p: 130, c: 'food' }, { n: 'ሽሮ', p: 120, c: 'food' }, { n: 'ተጋቢኖ', p: 130, c: 'food' },
-        { n: 'በያይነት', p: 140, c: 'food' }, { n: 'ጥብስ', p: 270, c: 'food' }, { n: 'ስጋ ፍርፍር', p: 250, c: 'food' }
+        { n: 'ቡና', p: 40, t: 'd' }, { n: 'ሻይ', p: 25, t: 'd' }, { n: 'ወተት', p: 70, t: 'd' }, { n: 'ማኪያቶ', p: 60, t: 'd' },
+        { n: 'ለስላሳ', p: 50, t: 'd' }, { n: 'ውሃ 1L', p: 35, t: 'd' }, { n: 'አቮካዶ ጁስ', p: 120, t: 'd' }, { n: 'ስፔሻል ጁስ', p: 250, t: 'd' },
+        { n: 'ፓስታ በስጎ', p: 130, t: 'f' }, { n: 'ሽሮ', p: 120, t: 'f' }, { n: 'ተጋቢኖ', p: 130, t: 'f' }, { n: 'በያይነት', p: 140, t: 'f' },
+        { n: 'ጥብስ', p: 270, t: 'f' }, { n: 'ስጋ ፍርፍር', p: 250, t: 'f' }, { n: 'እንቁላል ሳንድዊች', p: 120, t: 'f' }
     ];
 
-    let selectedItem = null, isAdmin = false;
+    let sel = null, isAdmin = false;
+    const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
-        document.getElementById('work-date').onchange = syncData;
-        renderMenu();
-        syncData();
-
+        document.getElementById('work-date').onchange = sync;
+        MENU.forEach(i => {
+            const btn = document.createElement('div');
+            btn.className = `menu-btn ${i.t === 'f' ? 'food-btn' : ''}`;
+            btn.innerHTML = `<strong>${i.n}</strong><br><small>${i.p} ETB</small>`;
+            btn.onclick = () => { sel = i; document.getElementById('m-item').innerText = i.n; document.getElementById('qty-modal').style.display='flex'; };
+            document.getElementById(i.t === 'f' ? 'grid-food' : 'grid-drinks').appendChild(btn);
+        });
         auth.onAuthStateChanged(user => {
-            isAdmin = !!user;
+            isAdmin = (user && user.uid === adminUID);
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
-            document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
-            syncData();
+            document.getElementById('print-btn').style.display = isAdmin ? 'inline-block' : 'none';
+            sync();
         });
     };
 
-    function renderMenu() {
-        MENU.forEach(item => {
-            const b = document.createElement('div');
-            b.className = `menu-btn ${item.c === 'food' ? 'food-btn' : ''}`;
-            b.innerHTML = `<h3>${item.n}</h3><span style="font-size:0.7rem;">${item.p} ETB</span>`;
-            b.onclick = () => { selectedItem = item; document.getElementById('modal-title').innerText = item.n; document.getElementById('qty-modal').style.display='flex'; };
-            document.getElementById(item.c === 'food' ? 'grid-food' : 'grid-drinks').appendChild(b);
-        });
-    }
-
     async function confirmSale() {
-        const q = parseInt(document.getElementById('qty-input').value);
-        const d = document.getElementById('work-date').value;
+        const q = parseInt(document.getElementById('m-qty').value);
         if(!q) return;
         await db.collection('transactions').add({
-            n: selectedItem.n, q: q, p: selectedItem.p * q, d: d, ex: false, t: Date.now()
+            n: sel.n, q: q, p: sel.p * q, d: document.getElementById('work-date').value, ex: false, ts: Date.now()
         });
         closeModal();
     }
 
-    async function saveExpense() {
-        const n = document.getElementById('exp-name').value;
-        const p = parseFloat(document.getElementById('exp-price').value);
-        const d = document.getElementById('work-date').value;
+    async function saveEx() {
+        const n = document.getElementById('ex-name').value, p = parseFloat(document.getElementById('ex-amt').value);
         if(!n || !p) return;
         await db.collection('transactions').add({
-            n: "OUT: " + n, q: 1, p: p, d: d, ex: true, t: Date.now()
+            n: "OUT: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: true, ts: Date.now()
         });
-        document.getElementById('exp-name').value = ''; document.getElementById('exp-price').value = '';
+        document.getElementById('ex-name').value = ''; document.getElementById('ex-amt').value = '';
     }
 
-    function syncData() {
-        const d = document.getElementById('work-date').value;
-        // Basic query without complex ordering to avoid "Missing Index" errors
-        db.collection('transactions').where('d', '==', d).onSnapshot(snap => {
-            let sales = 0, exps = 0;
-            const body = document.getElementById('log-body');
-            body.innerHTML = '';
-            
-            // Sort manually in JavaScript instead of Firebase query
-            const docs = [];
-            snap.forEach(doc => docs.push({id: doc.id, ...doc.data()}));
-            docs.sort((a, b) => b.t - a.t);
-
-            docs.forEach(t => {
-                if(t.ex) exps += t.p; else sales += t.p;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
+    function sync() {
+        const date = document.getElementById('work-date').value;
+        db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
+            let s=0, e=0, html='';
+            const docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
+            docs.sort((a,b) => b.ts - a.ts).forEach(t => {
+                if(t.ex) e += t.p; else s += t.p;
+                html += `<tr>
                     <td style="color:${t.ex?'red':'black'}">${t.n}</td>
                     <td>${t.q}</td>
                     <td>${t.p}</td>
-                    <td class="adm-only">${isAdmin ? `<button class="del-btn" onclick="deleteDoc('${t.id}')">X</button>` : ''}</td>
-                `;
-                body.appendChild(tr);
+                    <td>${isAdmin ? `<button class="del-x" onclick="del('${t.id}')">X</button>` : ''}</td>
+                </tr>`;
             });
-            document.getElementById('total-sales').innerText = sales;
-            document.getElementById('total-expenses').innerText = exps;
-            document.getElementById('net-cash').innerText = (sales - exps) + " ETB";
+            document.getElementById('log-body').innerHTML = html;
+            document.getElementById('total-s').innerText = s;
+            document.getElementById('total-e').innerText = e;
+            document.getElementById('total-n').innerText = (s - e) + " ETB";
         });
     }
 
-    async function deleteDoc(id) {
-        if(confirm("Admin: Delete this record?")) await db.collection('transactions').doc(id).delete();
-    }
+    async function del(id) { if(confirm("Admin: Delete record?")) await db.collection('transactions').doc(id).delete(); }
 
     async function handleAuth() {
-        if(auth.currentUser) { auth.signOut(); }
+        if(auth.currentUser) { auth.signOut(); } 
         else {
-            const email = prompt("Admin Email:"), pass = prompt("Password:");
-            if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(e => alert(e.message));
+            const email = prompt("Email:"), pass = prompt("Password:");
+            if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
         }
     }
 
-    function closeModal() { document.getElementById('qty-modal').style.display='none'; }
+    function closeModal() { document.getElementById('qty-modal').style.display = 'none'; document.getElementById('m-qty').value = 1; }
 </script>
 </body>
 </html>
