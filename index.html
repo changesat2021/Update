@@ -3,93 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bean & Bloom POS</title>
+    <title>Bean & Bloom POS - Professional</title>
+    
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
     <style>
-        :root { --primary: #6F4E37; --food: #d35400; --bg: #f8f9fa; --white: #fff; --radius: 12px; }
-        body { margin: 0; font-family: system-ui; background: var(--bg); padding-bottom: 80px; }
-        .container { max-width: 600px; margin: 0 auto; padding: 15px; }
-        .card { background: var(--white); padding: 15px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px; }
-        .stat-box { text-align: center; background: var(--white); padding: 10px; border-radius: 10px; }
-        .stat-val { font-weight: 800; font-size: 1.1rem; display: block; }
-        .stat-lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; }
-        .tabs { display: flex; gap: 5px; margin-bottom: 15px; }
-        .tab { flex: 1; padding: 12px; border: none; border-radius: 8px; background: #ddd; font-weight: bold; }
-        .tab.active { background: var(--primary); color: white; }
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-        .menu-item { background: white; padding: 15px 5px; border-radius: 10px; text-align: center; border-bottom: 3px solid var(--primary); font-size: 0.85rem; font-weight: bold; }
-        .expense-area { background: #fff1f1; border: 1px dashed red; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
-        th { text-align: left; padding: 8px; border-bottom: 1px solid #ccc; }
-        td { padding: 8px; border-bottom: 1px solid #eee; }
-        .admin-footer { position: fixed; bottom: 0; width: 100%; max-width: 600px; background: white; padding: 10px; border-top: 1px solid #ddd; }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; z-index: 1000; }
-        .modal-box { background: white; padding: 20px; border-radius: 15px; width: 280px; text-align: center; }
-        @media print { .no-print { display: none !important; } .container { width: 100%; } }
+        :root {
+            --primary: #6F4E37; --food-color: #d35400; --accent: #2c3e50;
+            --light: #f8f9fa; --white: #ffffff; --danger: #c0392b;
+            --success: #27ae60; --border: #e0e0e0; --radius: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background-color: var(--light); color: var(--accent); padding-bottom: 80px; }
+        .container { max-width: 900px; margin: 0 auto; padding: 15px; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: var(--white); padding: 15px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h1 { color: var(--primary); font-size: 1.2rem; }
+        input[type="date"] { border: 1px solid var(--border); padding: 8px; border-radius: 4px; font-weight: bold; }
+
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+        .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid var(--border); }
+        .card-label { font-size: 0.65rem; color: #777; text-transform: uppercase; font-weight: bold; }
+        .card-value { font-size: 1.1rem; font-weight: 800; margin-top: 4px; }
+        .card.net { background: var(--accent); color: var(--white); }
+
+        .section-title { font-size: 0.8rem; color: #555; margin: 20px 0 10px 0; border-bottom: 2px solid #ddd; padding-bottom: 5px; text-transform: uppercase; font-weight: bold; }
+        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        @media (min-width: 768px) { .menu-grid { grid-template-columns: repeat(4, 1fr); } }
+
+        .menu-btn {
+            background: var(--white); border: 1px solid var(--border); border-left: 4px solid var(--primary);
+            border-radius: var(--radius); padding: 12px 8px; cursor: pointer; text-align: center;
+        }
+        .menu-btn.food-btn { border-left-color: var(--food-color); }
+        .menu-btn h3 { font-size: 0.85rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .menu-btn span { font-size: 0.8rem; font-weight: bold; color: #444; }
+
+        .log-section { background: var(--white); border-radius: var(--radius); margin-top: 20px; border: 1px solid var(--border); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #f4f4f4; color: #666; font-size: 0.7rem; }
+        
+        .expense-form { background: #fff; padding: 15px; border-radius: var(--radius); margin-top: 20px; border: 1px dashed #ccc; }
+        .form-row { display: flex; gap: 5px; margin-bottom: 10px; }
+        input[type="text"], input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 85%; max-width: 300px; text-align: center; }
+        .qty-input { width: 100%; font-size: 2rem; text-align: center; margin: 15px 0; border: 2px solid var(--primary); border-radius: 8px; }
+
+        .admin-controls { position: fixed; bottom: 0; width: 100%; max-width: 900px; background: white; border-top: 1px solid #ddd; padding: 10px; display: flex; gap: 10px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-ok { background: var(--success); color: white; }
+        .btn-payout { background: var(--accent); color: white; }
+
+        @media print {
+            header, .menu-grid, .expense-form, .admin-controls, .modal, .btn-del, .section-title, .del-col { display: none !important; }
+            .print-header { display: block; text-align: center; border-bottom: 2px solid #000; margin-bottom: 20px; }
+            .log-section { border: none; }
+            body { background: white; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="no-print" style="display:flex; justify-content: space-between; margin-bottom: 10px;">
-        <h3 style="color:var(--primary)">Bean & Bloom</h3>
-        <input type="date" id="work-date" style="padding:5px; border-radius:5px; border:1px solid #ccc;">
+    <div class="print-header" style="display:none;">
+        <h1>BEAN & BLOOM COFFEEHOUSE</h1>
+        <p id="print-date"></p>
     </div>
 
-    <div class="stats">
-        <div class="stat-box"><span class="stat-lbl">Sales</span><span class="stat-val" style="color:green" id="s-total">0</span></div>
-        <div class="stat-box"><span class="stat-lbl">Expenses</span><span class="stat-val" style="color:red" id="e-total">0</span></div>
-        <div class="stat-box" style="background:var(--primary); color:white"><span class="stat-lbl" style="color:#ddd">Net</span><span class="stat-val" id="n-total">0</span></div>
-    </div>
-
-    <div class="tabs no-print">
-        <button class="tab active" id="t1" onclick="setView('menu')">Menu</button>
-        <button class="tab" id="t2" onclick="setView('logs')">Transactions</button>
-    </div>
-
-    <div id="v-menu">
-        <div class="menu-grid" id="m-grid"></div>
-    </div>
-
-    <div id="v-logs" style="display:none;">
-        <div class="expense-area no-print">
-            <h4 style="margin:0 0 10px; color:red;">Add Paid Out / Expense</h4>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="ex-n" placeholder="Milk, Sugar..." style="flex:2; padding:8px;">
-                <input type="number" id="ex-p" placeholder="Price" style="flex:1; padding:8px;">
-                <button onclick="addExp()" style="background:red; color:white; border:none; padding:8px; border-radius:5px;">Save</button>
-            </div>
+    <header class="no-print">
+        <h1>☕ Bean & Bloom</h1>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <button id="auth-btn" onclick="toggleAuth()" style="font-size: 0.7rem; background:none; border:none; text-decoration:underline; cursor:pointer;">Admin Login</button>
+            <input type="date" id="work-date">
         </div>
-        <div class="card">
-            <h4>Daily Summary</h4>
-            <table>
-                <thead><tr><th>Item</th><th>Qty</th><th>Total</th><th class="adm no-print">Action</th></tr></thead>
-                <tbody id="l-body"></tbody>
-            </table>
-        </div>
+    </header>
+
+    <div class="dashboard">
+        <div class="card"><div class="card-label">Sales</div><div class="card-value" style="color:var(--success)" id="total-sales">0</div></div>
+        <div class="card"><div class="card-label">Expenses</div><div class="card-value" style="color:var(--danger)" id="total-expenses">0</div></div>
+        <div class="card net"><div class="card-label">Net Cash</div><div class="card-value" id="net-cash">0</div></div>
     </div>
 
-    <div class="admin-footer no-print">
-        <button id="auth-btn" onclick="handleAuth()" style="width:100%; padding:12px; border-radius:8px; background:#2c3e50; color:white; border:none; font-weight:bold;">Admin Login</button>
-        <button id="print-btn" onclick="window.print()" style="width:100%; margin-top:5px; display:none; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold;">Finalize & Save PDF</button>
+    <div id="menu-container" class="no-print">
+        <div class="section-title">Hot Drinks</div><div id="hot" class="menu-grid"></div>
+        <div class="section-title">Cold Drinks</div><div id="cold" class="menu-grid"></div>
+        <div class="section-title">Special Juices</div><div id="special" class="menu-grid"></div>
+        <div class="section-title">Fasting Foods</div><div id="fasting" class="menu-grid"></div>
+        <div class="section-title">Non-Fasting Foods</div><div id="nonfast" class="menu-grid"></div>
+    </div>
+
+    <div class="expense-form no-print">
+        <div class="form-row">
+            <input type="text" id="exp-name" placeholder="Expense Name">
+            <input type="number" id="exp-price" placeholder="Amount" inputmode="numeric">
+        </div>
+        <button class="btn btn-payout" style="width:100%" onclick="addExpense()">Record Payout</button>
+    </div>
+
+    <div class="log-section">
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th class="del-col">X</th>
+                </tr>
+            </thead>
+            <tbody id="log-body"></tbody>
+        </table>
+    </div>
+
+    <div class="admin-controls no-print">
+        <button id="payout-btn" class="btn btn-payout" onclick="printReport()" style="display:none;">Print Daily Payout</button>
     </div>
 </div>
 
-<div class="modal" id="qty-modal">
-    <div class="modal-box">
-        <h3 id="m-name">Item</h3>
-        <input type="number" id="m-qty" style="width:100%; font-size:2rem; text-align:center; margin:15px 0;" value="1">
+<div id="qty-modal" class="modal">
+    <div class="modal-content">
+        <h3 id="modal-item-name">Item</h3>
+        <input type="number" id="qty-input" class="qty-input" value="1">
         <div style="display:flex; gap:10px;">
-            <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
-            <button onclick="saveSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Confirm</button>
+            <button class="btn" style="background:#eee" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-ok" onclick="submitSale()">Add Sale</button>
         </div>
     </div>
 </div>
 
 <script>
+    // --- FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
         authDomain: "bean-5a113.firebaseapp.com",
@@ -99,106 +147,117 @@
         appId: "1:702927377502:web:9e50192a0c431da69850cf"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore(), auth = firebase.auth();
+    const db = firebase.firestore();
+    const auth = firebase.auth();
 
     const MENU = [
-        {n: 'Special Coffee', p: 40}, {n: 'Jebena Coffee', p: 40}, {n: 'Tea', p: 25}, {n: 'Macchiato', p: 60}, {n: 'Milk', p: 70}, 
-        {n: 'Lemon Tea', p: 50}, {n: 'Soft Drink', p: 50}, {n: 'Water 2L', p: 40}, {n: 'Water 1L', p: 35}, {n: 'Water 0.5L', p: 25},
-        {n: 'Avocado Juice', p: 120}, {n: 'Mango Juice', p: 120}, {n: 'Mixed Juice', p: 120}, {n: 'Special Juice', p: 250},
-        {n: 'Pasta Sauce', p: 130}, {n: 'Shiro', p: 120}, {n: 'Tegabino', p: 130}, {n: 'Firfir', p: 100}, {n: 'Bayaynet', p: 140},
-        {n: 'Tibs', p: 270}, {n: 'Meat Firfir', p: 250}, {n: 'Egg Sandwich', p: 120}, {n: 'Egg Firfir', p: 140}
+        { name: 'ቡና', price: 40, cat: 'hot' }, { name: 'ሻይ', price: 25, cat: 'hot' }, { name: 'ወተት', price: 70, cat: 'hot' }, { name: 'ማኪያቶ', price: 60, cat: 'hot' }, { name: 'ቀሽር', price: 50, cat: 'hot' }, { name: 'ስፕሪስ', price: 50, cat: 'hot' },
+        { name: 'ለስላሳ', price: 50, cat: 'cold' }, { name: 'ውሃ 2L', price: 40, cat: 'cold' }, { name: 'ውሃ 1L', price: 35, cat: 'cold' }, { name: 'ውሃ 0.5L', price: 25, cat: 'cold' },
+        { name: 'አቮካዶ ጁስ', price: 120, cat: 'special' }, { name: 'ማንጎ ጁስ', price: 120, cat: 'special' }, { name: 'ፓፓያ ጁስ', price: 120, cat: 'special' }, { name: 'ስፔሻል ጁስ', price: 250, cat: 'special' },
+        { name: 'ፓስታ በስጎ', price: 130, cat: 'fasting' }, { name: 'ሽሮ', price: 120, cat: 'fasting' }, { name: 'ተጋቢኖ', price: 130, cat: 'fasting' }, { name: 'በያይነት', price: 140, cat: 'fasting' }, { name: 'ቺፕስ 80', price: 80, cat: 'fasting' },
+        { name: 'ጥብስ', price: 270, cat: 'nonfast' }, { name: 'ስጋ ፍርፍር', price: 250, cat: 'nonfast' }, { name: 'እንቁላል ሳንድዊች', price: 120, cat: 'nonfast' }, { name: 'እንቁላል ፍርፍር', price: 140, cat: 'nonfast' }
     ];
 
-    let selItem = null, isAdmin = false;
+    let selectedItem = null;
+    let isAdmin = false;
 
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
-        document.getElementById('work-date').onchange = sync;
+        document.getElementById('work-date').onchange = loadDay;
         renderMenu();
-        auth.onAuthStateChanged(u => {
-            isAdmin = !!u;
-            document.getElementById('auth-btn').innerText = u ? "Logout Admin" : "Admin Login";
-            document.getElementById('print-btn').style.display = u ? "block" : "none";
-            sync();
+        loadDay();
+        
+        auth.onAuthStateChanged(user => {
+            isAdmin = !!user;
+            document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
+            document.getElementById('payout-btn').style.display = isAdmin ? 'block' : 'none';
+            loadDay(); 
         });
     };
 
     function renderMenu() {
-        const g = document.getElementById('m-grid');
-        MENU.forEach(i => {
-            const d = document.createElement('div');
-            d.className = 'menu-item';
-            d.innerHTML = `${i.n}<br><span style="color:#777; font-size:0.7rem;">${i.p} ETB</span>`;
-            d.onclick = () => { selItem = i; document.getElementById('m-name').innerText = i.n; document.getElementById('qty-modal').style.display='flex'; };
-            g.appendChild(d);
+        MENU.forEach(item => {
+            const btn = document.createElement('div');
+            btn.className = `menu-btn ${['fasting','nonfast'].includes(item.cat) ? 'food-btn' : ''}`;
+            btn.innerHTML = `<h3>${item.name}</h3><span>${item.price} ETB</span>`;
+            btn.onclick = () => {
+                selectedItem = item;
+                document.getElementById('modal-item-name').innerText = item.name;
+                document.getElementById('qty-modal').style.display = 'flex';
+            };
+            document.getElementById(item.cat).appendChild(btn);
         });
     }
 
-    async function saveSale() {
-        const q = parseInt(document.getElementById('m-qty').value);
-        if(!q) return;
+    async function submitSale() {
+        const qty = parseInt(document.getElementById('qty-input').value);
+        const date = document.getElementById('work-date').value;
+        if(!qty) return;
         await db.collection('transactions').add({
-            n: selItem.n, q, p: selItem.p * q, ex: false, d: document.getElementById('work-date').value, ts: firebase.firestore.FieldValue.serverTimestamp()
+            n: selectedItem.name, q: qty, p: selectedItem.price * qty, d: date, ex: false, ts: Date.now()
         });
         closeModal();
     }
 
-    async function addExp() {
-        const n = document.getElementById('ex-n').value, p = parseFloat(document.getElementById('ex-p').value);
-        if(!n || !p) return;
+    async function addExpense() {
+        const name = document.getElementById('exp-name').value;
+        const price = document.getElementById('exp-price').value;
+        const date = document.getElementById('work-date').value;
+        if(!name || !price) return;
         await db.collection('transactions').add({
-            n: "EXP: "+n, q: 1, p, ex: true, d: document.getElementById('work-date').value, ts: firebase.firestore.FieldValue.serverTimestamp()
+            n: "EXP: " + name, q: 1, p: parseFloat(price), d: date, ex: true, ts: Date.now()
         });
-        document.getElementById('ex-n').value = ''; document.getElementById('ex-p').value = '';
+        document.getElementById('exp-name').value = ''; document.getElementById('exp-price').value = '';
     }
 
-    function sync() {
+    function loadDay() {
         const date = document.getElementById('work-date').value;
-        db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
-            let s=0, e=0, map={};
+        db.collection('transactions').where('d', '==', date).orderBy('ts', 'desc').onSnapshot(snap => {
+            let sales = 0, exps = 0;
+            const body = document.getElementById('log-body');
+            body.innerHTML = '';
+
             snap.forEach(doc => {
                 const t = doc.data();
-                if(t.ex) { e += t.p; } else { s += t.p; }
-                if(!map[t.n]) map[t.n] = {q:0, p:0, ids:[]};
-                map[t.n].q += t.q; map[t.n].p += t.p; map[t.n].ids.push(doc.id);
+                if(t.ex) exps += t.p; else sales += t.p;
+                
+                const tr = document.createElement('tr');
+                const delBtn = isAdmin ? `<button onclick="deleteRow('${doc.id}')" style="color:red; background:none; border:none; font-weight:bold;">X</button>` : '';
+                tr.innerHTML = `
+                    <td style="color:${t.ex?'red':'black'}">${t.n}</td>
+                    <td>${t.q}</td>
+                    <td>${t.p}</td>
+                    <td class="del-col">${delBtn}</td>
+                `;
+                body.appendChild(tr);
             });
-            document.getElementById('s-total').innerText = s;
-            document.getElementById('e-total').innerText = e;
-            document.getElementById('n-total').innerText = (s - e) + " ETB";
-            
-            const tbody = document.getElementById('l-body');
-            tbody.innerHTML = '';
-            for(let name in map) {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td>${name}</td><td>${map[name].q}</td><td>${map[name].p}</td><td class="adm no-print">${isAdmin ? '<button onclick="delGroup(\''+name+'\')" style="color:red">X</button>' : '-'}</td>`;
-                tbody.appendChild(row);
-            }
+
+            document.getElementById('total-sales').innerText = sales;
+            document.getElementById('total-expenses').innerText = exps;
+            document.getElementById('net-cash').innerText = (sales - exps);
         });
     }
 
-    async function delGroup(name) {
-        if(!isAdmin || !confirm("Delete " + name + "?")) return;
-        const date = document.getElementById('work-date').value;
-        const batch = db.batch();
-        const snap = await db.collection('transactions').where('d', '==', date).where('n', '==', name).get();
-        snap.forEach(d => batch.delete(d.ref));
-        await batch.commit();
+    async function deleteRow(id) {
+        if(!isAdmin) return;
+        if(confirm("Admin: Permanently delete this record?")) {
+            await db.collection('transactions').doc(id).delete();
+        }
     }
 
-    async function handleAuth() {
+    async function toggleAuth() {
         if(auth.currentUser) { auth.signOut(); }
         else {
-            const email = prompt("Email:"), pass = prompt("Password:");
+            const email = prompt("Admin Email:"), pass = prompt("Password:");
             if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(e => alert(e.message));
         }
     }
 
-    function setView(v) {
-        document.getElementById('v-menu').style.display = v === 'menu' ? 'block' : 'none';
-        document.getElementById('v-logs').style.display = v === 'logs' ? 'block' : 'none';
-        document.getElementById('t1').classList.toggle('active', v === 'menu');
-        document.getElementById('t2').classList.toggle('active', v === 'logs');
+    function printReport() {
+        document.getElementById('print-date').innerText = "Date: " + document.getElementById('work-date').value;
+        window.print();
     }
+
     function closeModal() { document.getElementById('qty-modal').style.display = 'none'; }
 </script>
 </body>
