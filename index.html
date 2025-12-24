@@ -3,79 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bean & Bloom POS</title>
+    <title>Bean & Bloom POS - Admin Elite</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <style>
         :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; }
-        body { margin: 0; font-family: -apple-system, sans-serif; background: #f4f4f4; color: var(--accent); padding-bottom: 80px; }
+        body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
         .container { max-width: 600px; margin: 0 auto; padding: 15px; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: var(--white); padding: 12px; border-radius: var(--radius); }
+        
+        /* Dashboard & UI Styles */
+        header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; }
         .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .card { background: var(--white); padding: 15px; border-radius: var(--radius); text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .val { font-size: 1.2rem; font-weight: 800; display: block; }
-        .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; }
-        .section-title { font-size: 0.9rem; font-weight: bold; margin: 20px 0 10px; color: var(--primary); border-left: 4px solid var(--primary); padding-left: 10px; }
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 15px; border-radius: var(--radius); text-align: center; cursor: pointer; }
-        .food-btn { border-left: 5px solid var(--food); }
-        .expense-box { background: #fff1f1; border: 1px dashed #ff4d4d; padding: 15px; border-radius: var(--radius); margin-top: 20px; }
-        table { width: 100%; border-collapse: collapse; background: var(--white); margin-top: 15px; border-radius: var(--radius); overflow: hidden; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-        .del-x { color: red; font-weight: bold; border: none; background: none; cursor: pointer; }
-        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; text-align: center; }
+        .val { font-size: 1.1rem; font-weight: 800; display: block; }
+        .lbl { font-size: 0.6rem; color: #888; text-transform: uppercase; }
+        
+        /* Menu Styles */
+        .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); text-transform: uppercase; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
+        .food-btn { border-left-color: var(--food); }
+
+        /* Table & Print Logic */
+        table { width: 100%; border-collapse: collapse; background: white; margin-top: 10px; font-size: 0.85rem; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        .print-only { display: none; }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
+            .container { max-width: 100%; padding: 0; }
+            .summary-table { border: 2px solid black; }
+        }
+
+        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; align-items: center; }
+        .btn-payout { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
-        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 80%; max-width: 300px; text-align: center; }
-        @media print { .no-print { display: none !important; } }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="print-only" style="text-align:center; margin-bottom: 20px;">
+        <h1 style="margin:0;">BEAN & BLOOM COFFEEHOUSE</h1>
+        <p id="print-date-display" style="font-weight:bold;"></p>
+        <hr>
+        <h3>DAILY MANAGEMENT SUMMARY</h3>
+    </div>
+
     <header class="no-print">
         <h2 style="color:var(--primary)">Bean & Bloom</h2>
-        <input type="date" id="work-date" style="padding:5px;">
+        <input type="date" id="work-date">
     </header>
 
     <div class="dashboard">
-        <div class="card"><span class="lbl">Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
-        <div class="card"><span class="lbl">Payouts</span><span class="val" id="total-e" style="color:red">0</span></div>
-        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net</span><span class="val" id="total-n">0</span></div>
+        <div class="card"><span class="lbl">Total Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
+        <div class="card"><span class="lbl">Total Payouts</span><span class="val" id="total-e" style="color:red">0</span></div>
+        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
     </div>
 
     <div class="no-print">
-        <div class="section-title">Drinks & Juices</div>
-        <div id="grid-drinks" class="menu-grid"></div>
-        
-        <div class="section-title">Food & Snacks</div>
-        <div id="grid-food" class="menu-grid"></div>
+        <div class="section-title">Drinks & Food</div>
+        <div id="grid-main" class="menu-grid"></div>
 
-        <div class="expense-box">
-            <h4 style="color:red; margin-bottom:10px;">Daily Expenses / Payouts</h4>
-            <input type="text" id="ex-name" placeholder="Reason (Milk, Rent...)" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd;">
-            <input type="number" id="ex-amt" placeholder="Amount (ETB)" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd;">
-            <button onclick="saveEx()" style="width:100%; background:red; color:white; padding:12px; border:none; border-radius:5px; font-weight:bold;">Save Payout</button>
+        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed red;">
+            <p style="font-weight:bold; color:red; font-size:0.7rem; margin-bottom:5px;">ADD EXPENSE/PAYOUT</p>
+            <input type="text" id="ex-name" placeholder="Reason..." style="width:65%; padding:8px;">
+            <input type="number" id="ex-amt" placeholder="Amount" style="width:30%; padding:8px;">
+            <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Record Payout</button>
         </div>
     </div>
 
     <div class="card" style="padding:0; margin-top:20px;">
-        <table>
-            <thead><tr><th>Item</th><th>Qty</th><th>ETB</th><th class="adm-only"></th></tr></thead>
+        <h4 class="print-only" style="padding:10px; background:#eee; margin:0;">Itemized Totals</h4>
+        <table id="main-table">
+            <thead>
+                <tr>
+                    <th>Item Description</th>
+                    <th>Qty</th>
+                    <th>Total (ETB)</th>
+                    <th class="no-print">X</th>
+                </tr>
+            </thead>
             <tbody id="log-body"></tbody>
         </table>
     </div>
 
     <div class="admin-nav no-print">
-        <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; color:blue; text-decoration:underline;">Admin Login</button>
-        <button id="print-btn" onclick="window.print()" style="display:none; margin-left:20px; background:var(--primary); color:white; border:none; padding:8px 15px; border-radius:5px;">Print Daily Payout</button>
+        <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; font-size:0.7rem; text-decoration:underline;">Admin</button>
+        <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Print & Finalize PDF</button>
     </div>
 </div>
 
 <div id="qty-modal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="background:white; padding:20px; border-radius:15px; text-align:center;">
         <h3 id="m-item">Item</h3>
-        <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100%; text-align:center; margin:20px 0;">
+        <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100px; text-align:center; margin:15px;">
         <div style="display:flex; gap:10px;">
             <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
             <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Confirm</button>
@@ -97,9 +122,9 @@
 
     const MENU = [
         { n: 'ቡና', p: 40, t: 'd' }, { n: 'ሻይ', p: 25, t: 'd' }, { n: 'ወተት', p: 70, t: 'd' }, { n: 'ማኪያቶ', p: 60, t: 'd' },
-        { n: 'ለስላሳ', p: 50, t: 'd' }, { n: 'ውሃ 1L', p: 35, t: 'd' }, { n: 'አቮካዶ ጁስ', p: 120, t: 'd' }, { n: 'ስፔሻል ጁስ', p: 250, t: 'd' },
-        { n: 'ፓስታ በስጎ', p: 130, t: 'f' }, { n: 'ሽሮ', p: 120, t: 'f' }, { n: 'ተጋቢኖ', p: 130, t: 'f' }, { n: 'በያይነት', p: 140, t: 'f' },
-        { n: 'ጥብስ', p: 270, t: 'f' }, { n: 'ስጋ ፍርፍር', p: 250, t: 'f' }, { n: 'እንቁላል ሳንድዊች', p: 120, t: 'f' }
+        { n: 'ለስላሳ', p: 50, t: 'd' }, { n: 'ውሃ 1L', p: 35, t: 'd' }, { n: 'አቮካዶ ጁስ', p: 120, t: 'd' },
+        { n: 'ፓስታ በስጎ', p: 130, t: 'f' }, { n: 'ሽሮ', p: 120, t: 'f' }, { n: 'ተጋቢኖ', p: 130, t: 'f' },
+        { n: 'በያይነት', p: 140, t: 'f' }, { n: 'ጥብስ', p: 270, t: 'f' }, { n: 'ስጋ ፍርፍር', p: 250, t: 'f' }
     ];
 
     let sel = null, isAdmin = false;
@@ -108,20 +133,24 @@
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('work-date').onchange = sync;
+        renderMenu();
+        auth.onAuthStateChanged(user => {
+            isAdmin = (user && user.uid === adminUID);
+            document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
+            document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
+            sync();
+        });
+    };
+
+    function renderMenu() {
         MENU.forEach(i => {
             const btn = document.createElement('div');
             btn.className = `menu-btn ${i.t === 'f' ? 'food-btn' : ''}`;
             btn.innerHTML = `<strong>${i.n}</strong><br><small>${i.p} ETB</small>`;
             btn.onclick = () => { sel = i; document.getElementById('m-item').innerText = i.n; document.getElementById('qty-modal').style.display='flex'; };
-            document.getElementById(i.t === 'f' ? 'grid-food' : 'grid-drinks').appendChild(btn);
+            document.getElementById('grid-main').appendChild(btn);
         });
-        auth.onAuthStateChanged(user => {
-            isAdmin = (user && user.uid === adminUID);
-            document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
-            document.getElementById('print-btn').style.display = isAdmin ? 'inline-block' : 'none';
-            sync();
-        });
-    };
+    }
 
     async function confirmSale() {
         const q = parseInt(document.getElementById('m-qty').value);
@@ -144,17 +173,29 @@
     function sync() {
         const date = document.getElementById('work-date').value;
         db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
-            let s=0, e=0, html='';
-            const docs = []; snap.forEach(d => docs.push({id: d.id, ...d.data()}));
-            docs.sort((a,b) => b.ts - a.ts).forEach(t => {
+            let s=0, e=0, html='', summary = {};
+            
+            snap.forEach(doc => {
+                const t = doc.data();
                 if(t.ex) e += t.p; else s += t.p;
+
+                // Sum up logic for printing
+                if(!summary[t.n]) summary[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
+                summary[t.n].q += t.q;
+                summary[t.n].p += t.p;
+            });
+
+            // Display summed items
+            for (let name in summary) {
+                const t = summary[name];
                 html += `<tr>
-                    <td style="color:${t.ex?'red':'black'}">${t.n}</td>
+                    <td style="color:${t.isEx?'red':'black'}">${name}</td>
                     <td>${t.q}</td>
                     <td>${t.p}</td>
-                    <td>${isAdmin ? `<button class="del-x" onclick="del('${t.id}')">X</button>` : ''}</td>
+                    <td class="no-print">${isAdmin ? `<button onclick="del('${t.id}')" style="color:red; border:none; background:none; font-weight:bold;">X</button>` : ''}</td>
                 </tr>`;
-            });
+            }
+
             document.getElementById('log-body').innerHTML = html;
             document.getElementById('total-s').innerText = s;
             document.getElementById('total-e').innerText = e;
@@ -162,17 +203,38 @@
         });
     }
 
-    async function del(id) { if(confirm("Admin: Delete record?")) await db.collection('transactions').doc(id).delete(); }
+    function initiatePrint() {
+        document.getElementById('print-date-display').innerText = "DATE: " + document.getElementById('work-date').value;
+        window.print();
+        
+        // This triggers AFTER the print dialog is closed
+        setTimeout(() => {
+            if(confirm("Report Print Complete. Would you like to CLEAR all data and brush the daily report for a fresh start?")) {
+                clearDailyData();
+            }
+        }, 1000);
+    }
+
+    async function clearDailyData() {
+        const date = document.getElementById('work-date').value;
+        const snap = await db.collection('transactions').where('d', '==', date).get();
+        const batch = db.batch();
+        snap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        alert("Daily data cleared. Ready for next shift.");
+    }
+
+    async function del(id) { if(confirm("Delete this entry?")) await db.collection('transactions').doc(id).delete(); }
 
     async function handleAuth() {
         if(auth.currentUser) { auth.signOut(); } 
         else {
-            const email = prompt("Email:"), pass = prompt("Password:");
+            const email = prompt("Admin Email:"), pass = prompt("Password:");
             if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
         }
     }
 
-    function closeModal() { document.getElementById('qty-modal').style.display = 'none'; document.getElementById('m-qty').value = 1; }
+    function closeModal() { document.getElementById('qty-modal').style.display='none'; document.getElementById('m-qty').value = 1; }
 </script>
 </body>
 </html>
