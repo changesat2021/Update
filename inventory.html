@@ -42,21 +42,21 @@
     <div id="auth-check" style="display:none; text-align:center; padding:50px;">
         <h2>Access Denied</h2>
         <p>Verifying Credentials...</p>
+        <a href="index.html">Go Back</a>
     </div>
 
     <div id="admin-panel" style="display:none;">
-        <h2>📦 Inventory Management</h2>
+        <h2>📦 Inventory Management (Admin)</h2>
 
         <div class="card">
             <h3>Add / Restock Material</h3>
             <div class="form-group" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
-                <input type="text" id="mat-name" placeholder="Material Name (e.g. Coffee Beans)">
+                <input type="text" id="mat-name" placeholder="Name (e.g. Coffee Beans)">
                 <input type="text" id="mat-unit" placeholder="Unit (kg, L)">
-                <input type="number" id="mat-cap" placeholder="Servings per Unit (e.g. 75)">
+                <input type="number" id="mat-cap" placeholder="Servings per Unit">
                 <input type="number" id="mat-qty" placeholder="Qty to Add">
             </div>
             <button onclick="addMaterial()">Update / Add Stock</button>
-            <small style="color:#666;">* If name exists, stock is added. If new, material is created.</small>
         </div>
 
         <div class="card">
@@ -65,7 +65,7 @@
             <div class="form-group" style="grid-template-columns: 2fr 2fr 1fr auto;">
                 <select id="recipe-item"></select>
                 <select id="recipe-mat"></select>
-                <input type="number" id="recipe-deduct" value="1" placeholder="Servings to deduct">
+                <input type="number" id="recipe-deduct" value="1" placeholder="Deduct count">
                 <button onclick="saveRecipe()">Link</button>
             </div>
             <div id="active-recipes" style="margin-top:10px; font-size:0.8rem;"></div>
@@ -79,7 +79,6 @@
                         <th>Material</th>
                         <th>Raw Qty</th>
                         <th>Rem. Servings</th>
-                        <th>Status</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -89,7 +88,6 @@
     </div>
 
 <script>
-    // --- COPY OF CONFIG FROM INDEX.HTML ---
     const firebaseConfig = {
         apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
         authDomain: "bean-5a113.firebaseapp.com",
@@ -102,7 +100,6 @@
     const db = firebase.firestore(), auth = firebase.auth();
     const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
-    // Menu List from POS for Dropdown (Must match index.html exactly)
     const POS_MENU = [
         'ቡና', 'ሻይ', 'ለውዝ', 'ወተት', 'ማኪያቶ', 'ቀሽር', 'ስፕሪስ',
         'ለስላሳ', 'ውሃ 2 ሊትር', 'ውሃ 1 ሊትር', 'ውሃ ግማሽ',
@@ -118,7 +115,7 @@
                 init();
             } else {
                 document.getElementById('auth-check').style.display = 'block';
-                document.getElementById('auth-check').innerHTML = `<h2>Access Denied</h2><p>You must be an admin to view this page.</p><a href="index.html">Go Back</a>`;
+                document.getElementById('auth-check').innerHTML = `<h2>Access Denied</h2><p>Restricted to Admin Only.</p><a href="index.html">Go Back</a>`;
             }
         });
     };
@@ -127,7 +124,6 @@
         loadInventory();
         loadRecipes();
         
-        // Populate Dropdowns
         const itemSel = document.getElementById('recipe-item');
         POS_MENU.sort().forEach(m => {
             let opt = document.createElement('option');
@@ -141,7 +137,7 @@
         db.collection('inventory').orderBy('name').onSnapshot(snap => {
             let html = '';
             const matSel = document.getElementById('recipe-mat');
-            matSel.innerHTML = ''; // Clear dropdown
+            matSel.innerHTML = ''; 
 
             snap.forEach(doc => {
                 const d = doc.data();
@@ -151,18 +147,15 @@
                 opt.value = doc.id; opt.innerText = d.name;
                 matSel.appendChild(opt);
 
-                // Determine Status
                 let statusClass = 'status-ok';
-                let statusText = 'OK';
-                if(d.remainingServings <= 0) { statusClass = 'status-out'; statusText = 'OUT OF STOCK'; }
-                else if(d.remainingServings < (d.servingCapacity * 0.2)) { statusClass = 'status-low'; statusText = 'LOW'; }
+                if(d.remainingServings <= 0) statusClass = 'status-out';
+                else if(d.remainingServings < (d.servingCapacity * 0.2)) statusClass = 'status-low';
 
                 html += `
                 <tr class="${statusClass}">
                     <td><strong>${d.name}</strong><br><small>${d.unit}</small></td>
                     <td>${d.quantity.toFixed(2)}</td>
-                    <td>${d.remainingServings.toFixed(1)} / ${d.servingCapacity} per unit</td>
-                    <td>${statusText}</td>
+                    <td>${d.remainingServings.toFixed(1)} / ${d.servingCapacity}</td>
                     <td><button class="btn-danger" style="padding:5px;" onclick="deleteMat('${doc.id}')">Del</button></td>
                 </tr>`;
             });
@@ -178,22 +171,18 @@
 
         if(!name || !cap || !qty) return alert("Fill all fields");
 
-        // Check if exists to update, else create
         const snap = await db.collection('inventory').where('name', '==', name).limit(1).get();
-        
         const addedServings = qty * cap;
 
         if(!snap.empty) {
-            // Update existing
             const doc = snap.docs[0];
             await doc.ref.update({
                 quantity: firebase.firestore.FieldValue.increment(qty),
                 remainingServings: firebase.firestore.FieldValue.increment(addedServings),
-                servingCapacity: cap, // Update capacity definition if changed
+                servingCapacity: cap, 
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
             });
         } else {
-            // Create New
             await db.collection('inventory').add({
                 name: name,
                 unit: unit,
@@ -204,7 +193,6 @@
             });
         }
         
-        // Reset Inputs
         document.getElementById('mat-name').value = '';
         document.getElementById('mat-qty').value = '';
     }
@@ -223,27 +211,19 @@
 
         if(!matId) return alert("No material selected");
 
-        // Get existing recipe for this item or create new
         const snap = await db.collection('recipes').where('itemName', '==', item).get();
-        
-        let materials = [];
-        let docRef = null;
+        let materials = [], docRef = null;
 
         if(!snap.empty) {
             docRef = snap.docs[0].ref;
             materials = snap.docs[0].data().materials || [];
         }
 
-        // Check if material already linked, remove it to overwrite
         materials = materials.filter(m => m.materialId !== matId);
         materials.push({ materialId: matId, deductionPerSale: deduct });
 
-        if(docRef) {
-            await docRef.update({ materials: materials });
-        } else {
-            await db.collection('recipes').add({ itemName: item, materials: materials });
-        }
-        loadRecipes();
+        if(docRef) await docRef.update({ materials: materials });
+        else await db.collection('recipes').add({ itemName: item, materials: materials });
     }
 
     function loadRecipes() {
