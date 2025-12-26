@@ -9,52 +9,28 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --white: #fff; --radius: 10px; }
-        body { margin: 0; font-family: sans-serif; background: #eef2f3; padding: 10px; padding-bottom: 50px; }
+        body { margin: 0; font-family: sans-serif; background: #eef2f3; padding: 10px; }
         .container { max-width: 650px; margin: 0 auto; }
-        
         header { background: var(--primary); color: white; padding: 15px; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        
         .add-card { background: var(--white); padding: 15px; border-radius: var(--radius); box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid var(--accent); }
         .input-row { display: flex; gap: 8px; margin-bottom: 8px; }
-        input, select { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        .btn-add { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        
-        .summary { display: flex; gap: 10px; margin-bottom: 15px; }
-        .stat-card { flex: 1; background: white; padding: 10px; border-radius: 8px; text-align: center; }
-        .val { font-size: 1.2rem; font-weight: bold; display: block; }
-        .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; }
-
-        .record { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .r-info h4 { margin: 0 0 5px 0; color: #333; }
-        .r-info p { margin: 0; font-size: 0.8rem; color: #666; }
-        .r-actions { display: flex; gap: 5px; flex-direction: column; }
-        .btn-pay { background: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
-        .btn-del { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; display: none; }
-        
-        .paid-row { opacity: 0.6; background: #f9f9f9; }
-        .nav-link { display: inline-block; margin-bottom: 10px; color: var(--primary); text-decoration: none; font-weight: bold; }
+        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; }
+        .btn-add { width: 100%; padding: 15px; background: var(--accent); color: white; border: none; border-radius: 5px; font-weight: bold; font-size: 1rem; cursor: pointer; }
+        .record { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .paid-row { opacity: 0.5; background: #f0f0f0; }
+        .btn-pay { background: #27ae60; color: white; border: none; padding: 8px 12px; border-radius: 4px; }
+        .btn-del { background: #c0392b; color: white; border: none; padding: 8px 12px; border-radius: 4px; display: none; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="index.html" class="nav-link">← Back to POS</a>
+    <a href="index.html" style="text-decoration:none; font-weight:bold; color:var(--primary);">← Back to POS</a>
 
     <header>
         <h3 style="margin:0;">💳 Floating Money</h3>
-        <input type="date" id="filter-date" style="max-width: 130px; color:black;">
+        <input type="date" id="filter-date" style="max-width: 150px;">
     </header>
-
-    <div class="summary">
-        <div class="stat-card">
-            <span class="lbl">Unpaid Today</span>
-            <span class="val" id="total-unpaid" style="color:#c0392b;">0</span>
-        </div>
-        <div class="stat-card">
-            <span class="lbl">Collected Today</span>
-            <span class="val" id="total-paid" style="color:#27ae60;">0</span>
-        </div>
-    </div>
 
     <div class="add-card">
         <div class="input-row">
@@ -62,9 +38,9 @@
             <input type="number" id="c-amt" placeholder="Amount (ETB)">
         </div>
         <div class="input-row">
-            <input type="text" id="c-reason" placeholder="Reason (e.g. Breakfast, Lunch)">
+            <input type="text" id="c-reason" placeholder="Reason (e.g. Lunch)">
         </div>
-        <button class="btn-add" onclick="addFloat()">Record Unpaid Balance</button>
+        <button class="btn-add" onclick="addFloat()">Save Debt</button>
     </div>
 
     <div id="float-list"></div>
@@ -88,7 +64,6 @@
     window.onload = () => {
         document.getElementById('filter-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('filter-date').onchange = loadData;
-        
         loadData();
 
         auth.onAuthStateChanged(user => {
@@ -103,7 +78,7 @@
         const reason = document.getElementById('c-reason').value;
         const date = document.getElementById('filter-date').value;
 
-        if(!name || !amt) return alert("Please fill Name and Amount");
+        if(!name || !amt) return alert("Enter Name and Amount");
 
         try {
             await db.collection('floating_money').add({
@@ -114,61 +89,47 @@
                 status: 'unpaid',
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+            // Clear inputs
             document.getElementById('c-name').value = '';
             document.getElementById('c-amt').value = '';
             document.getElementById('c-reason').value = '';
+            alert("Debt Saved!");
         } catch(e) {
-            alert("Error: Missing or insufficient permissions. Update your Firebase Rules.");
+            console.error(e);
+            alert("Database Error: Ensure you updated your Rules in Firebase Console.");
         }
     }
 
     function loadData() {
         const date = document.getElementById('filter-date').value;
-        
-        db.collection('floating_money')
-          .where('date', '==', date)
-          .orderBy('createdAt', 'desc')
+        db.collection('floating_money').where('date', '==', date).orderBy('createdAt', 'desc')
           .onSnapshot(snap => {
               let html = '';
-              let unpaid = 0, paid = 0;
-
               snap.forEach(doc => {
                   const d = doc.data();
-                  if(d.status === 'paid') paid += d.amount;
-                  else unpaid += d.amount;
-
                   const isPaid = d.status === 'paid';
-                  
                   html += `
                   <div class="record ${isPaid ? 'paid-row' : ''}">
-                      <div class="r-info">
-                          <h4>${d.customerName} (${d.amount} ETB)</h4>
-                          <p>Reason: ${d.reason}</p>
-                          ${isPaid ? '<small style="color:green; font-weight:bold;">✅ PAID</small>' : '<small style="color:red;">⌛ UNPAID</small>'}
+                      <div>
+                          <strong>${d.customerName}</strong>: ${d.amount} ETB<br>
+                          <small>${d.reason}</small>
                       </div>
-                      <div class="r-actions">
-                          ${!isPaid ? `<button class="btn-pay" onclick="markPaid('${doc.id}')">Mark Paid</button>` : ''}
+                      <div style="text-align:right">
+                          ${!isPaid ? `<button class="btn-pay" onclick="markPaid('${doc.id}')">Mark Paid</button>` : '✅ Paid'}
                           ${isAdmin ? `<button class="btn-del" style="display:block" onclick="deleteRec('${doc.id}')">Delete</button>` : ''}
                       </div>
                   </div>`;
               });
-
               document.getElementById('float-list').innerHTML = html;
-              document.getElementById('total-unpaid').innerText = unpaid + " ETB";
-              document.getElementById('total-paid').innerText = paid + " ETB";
           });
     }
 
     async function markPaid(id) {
-        if(confirm("Confirm money received?")) {
-            await db.collection('floating_money').doc(id).update({ status: 'paid' });
-        }
+        if(confirm("Collect money?")) await db.collection('floating_money').doc(id).update({ status: 'paid' });
     }
 
     async function deleteRec(id) {
-        if(confirm("Admin: Delete this record permanently?")) {
-            await db.collection('floating_money').doc(id).delete();
-        }
+        if(confirm("Admin Delete?")) await db.collection('floating_money').doc(id).delete();
     }
 </script>
 </body>
