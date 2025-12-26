@@ -93,13 +93,15 @@
         </table>
     </div>
 
-    <div class="admin-nav no-print">
-        <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
-        
-        <a href="floating.html" class="nav-link">💳 Credit</a>
-        <a href="inventory.html" id="inv-link" class="nav-link" style="display:none; border-color:var(--primary); background:var(--primary); color:white;">📦 Stock</a>
-        <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Save PDF & Finalize</button>
-    </div>
+<div class="admin-nav no-print">
+    <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
+    
+    <a href="floating.html" class="nav-link">💳 Credit</a>
+    
+    <a href="inventory.html" id="inv-link" class="nav-link" style="display:none; border-color:var(--primary); background:var(--primary); color:white;">📦 Stock</a>
+
+    <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Save PDF & Finalize</button>
+</div>
 </div>
 
 <div id="qty-modal" class="modal">
