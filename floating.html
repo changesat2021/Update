@@ -12,28 +12,24 @@
         body { margin: 0; font-family: sans-serif; background: #eef2f3; padding: 10px; padding-bottom: 50px; }
         .container { max-width: 650px; margin: 0 auto; }
         
-        /* Header */
         header { background: var(--primary); color: white; padding: 15px; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         
-        /* Form */
         .add-card { background: var(--white); padding: 15px; border-radius: var(--radius); box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid var(--accent); }
         .input-row { display: flex; gap: 8px; margin-bottom: 8px; }
         input, select { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
         .btn-add { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
         
-        /* Summary */
         .summary { display: flex; gap: 10px; margin-bottom: 15px; }
         .stat-card { flex: 1; background: white; padding: 10px; border-radius: 8px; text-align: center; }
         .val { font-size: 1.2rem; font-weight: bold; display: block; }
         .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; }
 
-        /* List */
         .record { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .r-info h4 { margin: 0 0 5px 0; color: #333; }
         .r-info p { margin: 0; font-size: 0.8rem; color: #666; }
         .r-actions { display: flex; gap: 5px; flex-direction: column; }
         .btn-pay { background: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
-        .btn-del { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; display: none; } /* Hidden by default */
+        .btn-del { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; display: none; }
         
         .paid-row { opacity: 0.6; background: #f9f9f9; }
         .nav-link { display: inline-block; margin-bottom: 10px; color: var(--primary); text-decoration: none; font-weight: bold; }
@@ -66,8 +62,7 @@
             <input type="number" id="c-amt" placeholder="Amount (ETB)">
         </div>
         <div class="input-row">
-            <input type="text" id="c-reason" placeholder="Reason (e.g. Lunch)">
-            <input type="text" id="c-waiter" placeholder="Your Name (Waiter)">
+            <input type="text" id="c-reason" placeholder="Reason (e.g. Breakfast, Lunch)">
         </div>
         <button class="btn-add" onclick="addFloat()">Record Unpaid Balance</button>
     </div>
@@ -91,18 +86,14 @@
     let isAdmin = false;
 
     window.onload = () => {
-        // Set date to today
         document.getElementById('filter-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('filter-date').onchange = loadData;
         
-        // 1. Load Data immediately (No Auth Required)
         loadData();
 
-        // 2. Check Auth ONLY for Admin Features (Delete button)
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
-            // Re-render to show/hide delete buttons if admin logs in
-            loadData();
+            loadData(); 
         });
     };
 
@@ -110,27 +101,24 @@
         const name = document.getElementById('c-name').value;
         const amt = parseFloat(document.getElementById('c-amt').value);
         const reason = document.getElementById('c-reason').value;
-        const waiter = document.getElementById('c-waiter').value;
         const date = document.getElementById('filter-date').value;
 
-        if(!name || !amt || !waiter) return alert("Please fill Name, Amount and Waiter Name");
+        if(!name || !amt) return alert("Please fill Name and Amount");
 
         try {
             await db.collection('floating_money').add({
                 customerName: name,
                 amount: amt,
                 reason: reason || "Unspecified",
-                waiter: waiter,
                 date: date,
                 status: 'unpaid',
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            // Clear form
             document.getElementById('c-name').value = '';
             document.getElementById('c-amt').value = '';
             document.getElementById('c-reason').value = '';
         } catch(e) {
-            alert("Error: " + e.message);
+            alert("Error: Missing or insufficient permissions. Update your Firebase Rules.");
         }
     }
 
@@ -155,7 +143,7 @@
                   <div class="record ${isPaid ? 'paid-row' : ''}">
                       <div class="r-info">
                           <h4>${d.customerName} (${d.amount} ETB)</h4>
-                          <p>Reason: ${d.reason} | Waiter: ${d.waiter}</p>
+                          <p>Reason: ${d.reason}</p>
                           ${isPaid ? '<small style="color:green; font-weight:bold;">✅ PAID</small>' : '<small style="color:red;">⌛ UNPAID</small>'}
                       </div>
                       <div class="r-actions">
@@ -171,14 +159,12 @@
           });
     }
 
-    // Anyone can mark as paid
     async function markPaid(id) {
         if(confirm("Confirm money received?")) {
             await db.collection('floating_money').doc(id).update({ status: 'paid' });
         }
     }
 
-    // Only Admin can delete
     async function deleteRec(id) {
         if(confirm("Admin: Delete this record permanently?")) {
             await db.collection('floating_money').doc(id).delete();
