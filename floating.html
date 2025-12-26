@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Floating Money / Credit</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <style>
+        :root { --primary: #2c3e50; --accent: #e67e22; --white: #fff; --radius: 10px; }
+        body { margin: 0; font-family: sans-serif; background: #eef2f3; padding: 10px; padding-bottom: 50px; }
+        .container { max-width: 650px; margin: 0 auto; }
+        
+        /* Header */
+        header { background: var(--primary); color: white; padding: 15px; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        
+        /* Form */
+        .add-card { background: var(--white); padding: 15px; border-radius: var(--radius); box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid var(--accent); }
+        .input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+        input, select { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .btn-add { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        
+        /* Summary */
+        .summary { display: flex; gap: 10px; margin-bottom: 15px; }
+        .stat-card { flex: 1; background: white; padding: 10px; border-radius: 8px; text-align: center; }
+        .val { font-size: 1.2rem; font-weight: bold; display: block; }
+        .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+
+        /* List */
+        .record { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .r-info h4 { margin: 0 0 5px 0; color: #333; }
+        .r-info p { margin: 0; font-size: 0.8rem; color: #666; }
+        .r-actions { display: flex; gap: 5px; flex-direction: column; }
+        .btn-pay { background: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+        .btn-del { background: #c0392b; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; display: none; } /* Hidden by default */
+        
+        .paid-row { opacity: 0.6; background: #f9f9f9; }
+        .nav-link { display: inline-block; margin-bottom: 10px; color: var(--primary); text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="index.html" class="nav-link">← Back to POS</a>
+
+    <header>
+        <h3 style="margin:0;">💳 Floating Money</h3>
+        <input type="date" id="filter-date" style="max-width: 130px; color:black;">
+    </header>
+
+    <div class="summary">
+        <div class="stat-card">
+            <span class="lbl">Unpaid Today</span>
+            <span class="val" id="total-unpaid" style="color:#c0392b;">0</span>
+        </div>
+        <div class="stat-card">
+            <span class="lbl">Collected Today</span>
+            <span class="val" id="total-paid" style="color:#27ae60;">0</span>
+        </div>
+    </div>
+
+    <div class="add-card">
+        <div class="input-row">
+            <input type="text" id="c-name" placeholder="Customer Name (e.g. Abebe)">
+            <input type="number" id="c-amt" placeholder="Amount (ETB)">
+        </div>
+        <div class="input-row">
+            <input type="text" id="c-reason" placeholder="Reason (e.g. Lunch)">
+            <input type="text" id="c-waiter" placeholder="Waiter Name">
+        </div>
+        <button class="btn-add" onclick="addFloat()">Record Unpaid Balance</button>
+    </div>
+
+    <div id="float-list"></div>
+</div>
+
+<script>
+    // --- COPY OF CONFIG FROM INDEX.HTML ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
+        authDomain: "bean-5a113.firebaseapp.com",
+        projectId: "bean-5a113",
+        storageBucket: "bean-5a113.firebasestorage.app",
+        messagingSenderId: "702927377502",
+        appId: "1:702927377502:web:9e50192a0c431da69850cf"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore(), auth = firebase.auth();
+    const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
+    
+    let isAdmin = false;
+
+    window.onload = () => {
+        document.getElementById('filter-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('filter-date').onchange = loadData;
+        
+        auth.onAuthStateChanged(user => {
+            isAdmin = (user && user.uid === adminUID);
+            loadData();
+        });
+    };
+
+    async function addFloat() {
+        const name = document.getElementById('c-name').value;
+        const amt = parseFloat(document.getElementById('c-amt').value);
+        const reason = document.getElementById('c-reason').value;
+        const waiter = document.getElementById('c-waiter').value;
+        const date = document.getElementById('filter-date').value;
+
+        if(!name || !amt || !waiter) return alert("Please fill Name, Amount and Waiter Name");
+
+        try {
+            await db.collection('floating_money').add({
+                customerName: name,
+                amount: amt,
+                reason: reason || "Unspecified",
+                waiter: waiter,
+                date: date,
+                status: 'unpaid',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            // Clear form
+            document.getElementById('c-name').value = '';
+            document.getElementById('c-amt').value = '';
+            document.getElementById('c-reason').value = '';
+        } catch(e) {
+            alert("Error: " + e.message);
+        }
+    }
+
+    function loadData() {
+        const date = document.getElementById('filter-date').value;
+        
+        db.collection('floating_money')
+          .where('date', '==', date)
+          .orderBy('createdAt', 'desc')
+          .onSnapshot(snap => {
+              let html = '';
+              let unpaid = 0, paid = 0;
+
+              snap.forEach(doc => {
+                  const d = doc.data();
+                  if(d.status === 'paid') paid += d.amount;
+                  else unpaid += d.amount;
+
+                  const isPaid = d.status === 'paid';
+                  
+                  html += `
+                  <div class="record ${isPaid ? 'paid-row' : ''}">
+                      <div class="r-info">
+                          <h4>${d.customerName} (${d.amount} ETB)</h4>
+                          <p>Reason: ${d.reason} | Waiter: ${d.waiter}</p>
+                          ${isPaid ? '<small style="color:green; font-weight:bold;">✅ PAID</small>' : '<small style="color:red;">⌛ UNPAID</small>'}
+                      </div>
+                      <div class="r-actions">
+                          ${!isPaid ? `<button class="btn-pay" onclick="markPaid('${doc.id}')">Mark Paid</button>` : ''}
+                          ${isAdmin ? `<button class="btn-del" style="display:block" onclick="deleteRec('${doc.id}')">Delete</button>` : ''}
+                      </div>
+                  </div>`;
+              });
+
+              document.getElementById('float-list').innerHTML = html;
+              document.getElementById('total-unpaid').innerText = unpaid + " ETB";
+              document.getElementById('total-paid').innerText = paid + " ETB";
+          });
+    }
+
+    async function markPaid(id) {
+        if(confirm("Confirm money received?")) {
+            await db.collection('floating_money').doc(id).update({ status: 'paid' });
+        }
+    }
+
+    async function deleteRec(id) {
+        if(confirm("Admin: Delete this record permanently?")) {
+            await db.collection('floating_money').doc(id).delete();
+        }
+    }
+</script>
+</body>
+</html>
