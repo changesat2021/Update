@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Floating Money / Credit</title>
+    <title>Floating Money - Waiters</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -62,12 +62,12 @@
 
     <div class="add-card">
         <div class="input-row">
-            <input type="text" id="c-name" placeholder="Customer Name (e.g. Abebe)">
+            <input type="text" id="c-name" placeholder="Customer Name">
             <input type="number" id="c-amt" placeholder="Amount (ETB)">
         </div>
         <div class="input-row">
             <input type="text" id="c-reason" placeholder="Reason (e.g. Lunch)">
-            <input type="text" id="c-waiter" placeholder="Waiter Name">
+            <input type="text" id="c-waiter" placeholder="Your Name (Waiter)">
         </div>
         <button class="btn-add" onclick="addFloat()">Record Unpaid Balance</button>
     </div>
@@ -76,7 +76,6 @@
 </div>
 
 <script>
-    // --- COPY OF CONFIG FROM INDEX.HTML ---
     const firebaseConfig = {
         apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
         authDomain: "bean-5a113.firebaseapp.com",
@@ -92,11 +91,17 @@
     let isAdmin = false;
 
     window.onload = () => {
+        // Set date to today
         document.getElementById('filter-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('filter-date').onchange = loadData;
         
+        // 1. Load Data immediately (No Auth Required)
+        loadData();
+
+        // 2. Check Auth ONLY for Admin Features (Delete button)
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
+            // Re-render to show/hide delete buttons if admin logs in
             loadData();
         });
     };
@@ -166,12 +171,14 @@
           });
     }
 
+    // Anyone can mark as paid
     async function markPaid(id) {
         if(confirm("Confirm money received?")) {
             await db.collection('floating_money').doc(id).update({ status: 'paid' });
         }
     }
 
+    // Only Admin can delete
     async function deleteRec(id) {
         if(confirm("Admin: Delete this record permanently?")) {
             await db.collection('floating_money').doc(id).delete();
