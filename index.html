@@ -39,9 +39,12 @@
             .card { border: none; }
         }
 
-        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
+        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; align-items: center; }
         .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
+        
+        /* NEW STYLES FOR LINKS */
+        .nav-link { text-decoration: none; color: var(--primary); font-size: 0.8rem; font-weight: bold; padding: 5px; border: 1px solid #eee; border-radius: 5px; }
     </style>
 </head>
 <body>
@@ -92,6 +95,9 @@
 
     <div class="admin-nav no-print">
         <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
+        
+        <a href="floating.html" class="nav-link">💳 Credit</a>
+        <a href="inventory.html" id="inv-link" class="nav-link" style="display:none; border-color:var(--primary); background:var(--primary); color:white;">📦 Stock</a>
         <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Save PDF & Finalize</button>
     </div>
 </div>
@@ -139,6 +145,8 @@
             isAdmin = (user && user.uid === adminUID);
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
+            // Toggle Inventory Link
+            document.getElementById('inv-link').style.display = isAdmin ? 'inline-block' : 'none';
             sync();
         });
     };
@@ -157,6 +165,11 @@
         const q = parseInt(document.getElementById('m-qty').value);
         if(!q) return;
         await db.collection('transactions').add({ n: sel.n, q: q, p: sel.p * q, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
+        
+        // --- NEW INTEGRATION: UPDATE INVENTORY ---
+        updateInventory(sel.n, q);
+        // -----------------------------------------
+
         closeModal();
     }
 
@@ -213,6 +226,39 @@
         }
     }
     function closeModal() { document.getElementById('qty-modal').style.display='none'; document.getElementById('m-qty').value = 1; }
+
+    // --- NEW: INVENTORY UPDATE FUNCTION ---
+    async function updateInventory(itemName, soldQty) {
+        try {
+            // Get Recipe
+            const recipeSnap = await db.collection('recipes').where('itemName', '==', itemName).get();
+            if (recipeSnap.empty) return; 
+
+            const recipe = recipeSnap.docs[0].data();
+            const batch = db.batch();
+            
+            // Deduct Materials
+            for (let mat of recipe.materials) {
+                const matRef = db.collection('inventory').doc(mat.materialId);
+                const matDoc = await matRef.get();
+                if (matDoc.exists) {
+                    const current = matDoc.data();
+                    const deductServings = soldQty * mat.deductionPerSale;
+                    // Protect against division by zero
+                    const rawDeduction = current.servingCapacity > 0 ? (deductServings / current.servingCapacity) : 0;
+
+                    batch.update(matRef, {
+                        remainingServings: firebase.firestore.FieldValue.increment(-deductServings),
+                        quantity: firebase.firestore.FieldValue.increment(-rawDeduction),
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            }
+            await batch.commit();
+        } catch (e) {
+            console.error("Inventory Error:", e);
+        }
+    }
 </script>
 </body>
 </html>
