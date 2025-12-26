@@ -3,206 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bean & Bloom POS | Redesigned</title>
+    <title>Bean & Bloom POS - Final</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
     <style>
-        :root {
-            --primary: #4E342E;
-            --accent: #D7CCC8;
-            --highlight: #FF7043;
-            --success: #2E7D32;
-            --bg: #F5F5F5;
-            --locked: #9e9e9e;
-        }
-
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); padding-bottom: 90px; color: #333; }
+        :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; }
+        body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
+        .container { max-width: 650px; margin: 0 auto; padding: 15px; }
         
-        /* --- Header & Status --- */
-        .top-bar {
-            background: var(--primary); color: white; padding: 15px;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            position: sticky; top: 0; z-index: 50;
-        }
-        .shop-status { font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; font-weight: bold; text-transform: uppercase; display: inline-flex; align-items: center; gap: 5px; }
-        .status-open { background: var(--success); color: white; }
-        .status-closed { background: #c62828; color: white; }
+        /* UI Components */
+        header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
+        .val { font-size: 1.1rem; font-weight: 800; display: block; }
+        .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
         
-        .container { max-width: 800px; margin: 0 auto; padding: 15px; }
+        /* Menu */
+        .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
+        .food-btn { border-left-color: var(--food); }
+        .add-btn { border-left-color: #7f8c8d; }
 
-        /* --- Dashboard Cards --- */
-        .dashboard { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .card { background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-bottom: 3px solid transparent; }
-        .card h3 { margin: 0; font-size: 1.2rem; }
-        .card small { color: #777; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; }
-        .card.net { border-bottom-color: var(--primary); }
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        .print-only { display: none; }
 
-        /* --- The Menu --- */
-        .menu-section { opacity: 1; transition: opacity 0.3s; }
-        .locked-mode { opacity: 0.5; pointer-events: none; filter: grayscale(100%); }
-        
-        .cat-title { margin: 25px 0 10px; font-size: 0.9rem; color: var(--primary); font-weight: 800; border-bottom: 2px solid #e0e0e0; padding-bottom: 5px; }
-        
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
-        .item-btn {
-            background: white; border: none; padding: 15px 10px;
-            border-radius: 12px; cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            transition: transform 0.1s, box-shadow 0.1s;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 80px;
-        }
-        .item-btn:active { transform: scale(0.96); }
-        .item-btn strong { font-size: 0.9rem; margin-bottom: 5px; text-align: center; }
-        .item-btn span { font-size: 0.8rem; color: #666; background: #eee; padding: 2px 8px; border-radius: 8px; }
-
-        /* Colors for categories */
-        .type-hot { border-top: 4px solid #795548; }
-        .type-juices { border-top: 4px solid #FFA726; }
-        .type-fasting { border-top: 4px solid #66BB6A; }
-        .type-nonfast { border-top: 4px solid #EF5350; }
-        .type-add { border-top: 4px solid #78909C; }
-
-        /* --- Locked Banner --- */
-        #off-hours-msg {
-            display: none; background: #333; color: white; text-align: center;
-            padding: 15px; margin-bottom: 15px; border-radius: 8px; font-weight: bold;
-        }
-
-        /* --- Expense Box --- */
-        .expense-box { background: white; padding: 15px; border-radius: 12px; border: 1px dashed #EF5350; margin-top: 25px; }
-        .input-row { display: flex; gap: 8px; margin-top: 10px; }
-        .input-row input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-        .btn-exp { background: #EF5350; color: white; border: none; padding: 10px; border-radius: 6px; width: 100%; margin-top: 8px; cursor: pointer; }
-
-        /* --- Table --- */
-        .log-container { background: white; margin-top: 20px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th { background: #eee; text-align: left; padding: 12px; color: #555; }
-        td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
-
-        /* --- Footer/Admin --- */
-        .bottom-nav {
-            position: fixed; bottom: 0; width: 100%; background: white;
-            border-top: 1px solid #ddd; padding: 15px;
-            display: flex; justify-content: space-between; align-items: center; box-sizing: border-box;
-        }
-        .admin-link { color: #888; text-decoration: none; font-size: 0.8rem; }
-
-        /* --- Modal --- */
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(3px); }
-        .modal-box { background: white; padding: 25px; border-radius: 15px; text-align: center; width: 80%; max-width: 300px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .qty-input { font-size: 2.5rem; width: 80px; text-align: center; border: none; border-bottom: 2px solid var(--primary); margin: 20px 0; outline: none; }
-        
-        /* Print Styles */
         @media print {
-            .no-print, .bottom-nav, .top-bar, .input-row, .btn-exp { display: none !important; }
-            body { background: white; padding: 0; }
-            .container { max-width: 100%; }
-            .log-container { box-shadow: none; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
+            .container { max-width: 100%; padding: 0; }
+            .card { border: none; }
         }
+
+        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
+        .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
     </style>
 </head>
 <body>
 
-<div class="top-bar no-print">
-    <div>
-        <div style="font-size:1.1rem; font-weight:bold;">Bean & Bloom</div>
-        <div style="font-size:0.7rem; opacity:0.8;" id="date-display">Loading...</div>
-    </div>
-    <div id="status-badge" class="shop-status status-open">
-        <i class="fas fa-store"></i> <span id="status-text">OPEN</span>
-    </div>
-</div>
-
 <div class="container">
-
-    <input type="date" id="work-date" class="no-print" style="margin-bottom:10px; padding:5px; display:none;">
-
-    <div id="off-hours-msg" class="no-print">
-        <i class="fas fa-lock"></i> SYSTEM LOCKED (10 PM - 6 AM)<br>
-        <span style="font-size:0.8rem; font-weight:normal;">Only Admin can operate now.</span>
+    <div class="print-only" style="text-align:center;">
+        <h1 style="margin:0;">BEAN & BLOOM COFFEEHOUSE</h1>
+        <p id="pdf-date" style="font-weight:bold;"></p>
+        <hr>
+        <h3>DAILY SALES SUMMARY</h3>
     </div>
+
+    <header class="no-print">
+        <h2 style="color:var(--primary)">☕ Bean & Bloom</h2>
+        <input type="date" id="work-date">
+    </header>
 
     <div class="dashboard">
-        <div class="card">
-            <small>Total Sales</small>
-            <h3 id="total-s" style="color:var(--success)">0</h3>
-        </div>
-        <div class="card">
-            <small>Expenses</small>
-            <h3 id="total-e" style="color:#d32f2f">0</h3>
-        </div>
-        <div class="card net">
-            <small>Net Cash</small>
-            <h3 id="total-n">0</h3>
-        </div>
+        <div class="card"><span class="lbl">Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
+        <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
+        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
     </div>
 
-    <div id="menu-area" class="menu-section no-print">
-        <div class="cat-title"><i class="fas fa-mug-hot"></i> Hot Drinks</div>
-        <div id="grid-hot" class="grid"></div>
-        
-        <div class="cat-title"><i class="fas fa-blender"></i> Juices</div>
-        <div id="grid-juices" class="grid"></div>
-        
-        <div class="cat-title"><i class="fas fa-seedling"></i> Fasting Food</div>
-        <div id="grid-fasting" class="grid"></div>
-        
-        <div class="cat-title"><i class="fas fa-drumstick-bite"></i> Non-Fasting</div>
-        <div id="grid-nonfast" class="grid"></div>
-        
-        <div class="cat-title"><i class="fas fa-cookie"></i> Snacks & Others</div>
-        <div id="grid-add" class="grid"></div>
+    <div class="no-print">
+        <div class="section-title">Hot & Cold Drinks</div><div id="grid-hot" class="menu-grid"></div>
+        <div class="section-title">Special Juices</div><div id="grid-juices" class="menu-grid"></div>
+        <div class="section-title">Fasting Food</div><div id="grid-fasting" class="menu-grid"></div>
+        <div class="section-title">Non-Fasting Food</div><div id="grid-nonfast" class="menu-grid"></div>
+        <div class="section-title">Additives & Snacks</div><div id="grid-add" class="menu-grid"></div>
 
-        <div class="expense-box">
-            <small style="color:#d32f2f; font-weight:bold; text-transform:uppercase;">Record Expense</small>
-            <div class="input-row">
-                <input type="text" id="ex-name" placeholder="Description (e.g. Injera)" style="flex:2">
-                <input type="number" id="ex-amt" placeholder="Cost" style="flex:1">
+        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed red;">
+            <p style="font-weight:bold; color:red; font-size:0.7rem; margin-bottom:5px;">ADD EXPENSE/PAYOUT</p>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="ex-name" placeholder="Reason..." style="flex:2; padding:8px;">
+                <input type="number" id="ex-amt" placeholder="Amount" style="flex:1; padding:8px;">
             </div>
-            <button onclick="saveEx()" class="btn-exp">Log Expense</button>
+            <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout</button>
         </div>
     </div>
 
-    <div class="log-container">
-        <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
-            <strong>Today's Activity</strong>
-            <button onclick="window.print()" class="no-print" style="border:none; background:none; color:blue; cursor:pointer;">Print PDF</button>
-        </div>
+    <div class="card" style="padding:0; margin-top:20px; overflow:hidden;">
+        <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Itemized Report</h4>
         <table>
-            <thead><tr><th>Item</th><th>Qty</th><th>Val</th><th class="no-print"></th></tr></thead>
+            <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
             <tbody id="log-body"></tbody>
         </table>
     </div>
 
-</div>
-
-<div class="bottom-nav no-print">
-    <div id="admin-indicator" style="font-weight:bold; color:var(--primary); font-size:0.8rem;">Waiter View</div>
-    <div style="display:flex; gap:15px;">
-        <a href="#" onclick="handleAuth()" class="admin-link" id="auth-btn">Admin Login</a>
-        <button id="clear-btn" onclick="clearDay()" style="display:none; background:red; color:white; border:none; padding:5px 10px; border-radius:5px;">End Day</button>
+    <div class="admin-nav no-print">
+        <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
+        <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Save PDF & Finalize</button>
     </div>
 </div>
 
-<div id="qty-modal" class="modal no-print">
-    <div class="modal-box">
-        <h3 id="m-item" style="color:var(--primary)">Item Name</h3>
-        <input type="number" id="m-qty" value="1" class="qty-input">
+<div id="qty-modal" class="modal">
+    <div class="modal-content" style="background:white; padding:20px; border-radius:15px; text-align:center;">
+        <h3 id="m-item">Item</h3>
+        <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100px; text-align:center; margin:15px;">
         <div style="display:flex; gap:10px;">
-            <button onclick="closeModal()" style="flex:1; padding:12px; border:1px solid #ddd; background:white; border-radius:8px;">Cancel</button>
-            <button onclick="confirmSale()" style="flex:1; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px;">ADD</button>
+            <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
+            <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Add</button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- CONFIGURATION ---
     const firebaseConfig = {
         apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
         authDomain: "bean-5a113.firebaseapp.com",
@@ -211,239 +116,103 @@
         messagingSenderId: "702927377502",
         appId: "1:702927377502:web:9e50192a0c431da69850cf"
     };
-    
-    // Initialize
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-    const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2"; // YOUR ADMIN ID
+    const db = firebase.firestore(), auth = firebase.auth();
+    const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
-    // --- MENU DATA ---
     const MENU = [
-        { n: 'ቡና (Coffee)', p: 40, c: 'hot' }, { n: 'ሻይ (Tea)', p: 25, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
-        { n: 'ለስላሳ', p: 50, c: 'hot' }, { n: 'ውሃ (L)', p: 35, c: 'hot' }, { n: 'ውሃ (S)', p: 25, c: 'hot' },
-        { n: 'አቮካዶ', p: 120, c: 'juices' }, { n: 'ማንጎ', p: 120, c: 'juices' }, { n: 'ስፔሻል ጁስ', p: 250, c: 'juices' }, { n: 'ሙዝ', p: 120, c: 'juices' },
-        { n: 'ሽሮ', p: 120, c: 'fasting' }, { n: 'ተጋቢኖ', p: 130, c: 'fasting' }, { n: 'በያይነት', p: 140, c: 'fasting' }, { n: 'ፍርፍር', p: 100, c: 'fasting' }, { n: 'ፓስታ', p: 130, c: 'fasting' }, { n: 'ፉል', p: 90, c: 'fasting' },
-        { n: 'ጥብስ (Tibs)', p: 270, c: 'nonfast' }, { n: 'ስጋ ፍርፍር', p: 250, c: 'nonfast' }, { n: 'እንቁላል', p: 140, c: 'nonfast' }, { n: 'ሽሮ በቅቤ', p: 180, c: 'nonfast' },
-        { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }
+        { n: 'ቡና', p: 40, c: 'hot' }, { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ለውዝ', p: 50, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
+        { n: 'ለስላሳ', p: 50, c: 'hot' }, { n: 'ውሃ 2 ሊትር', p: 40, c: 'hot' }, { n: 'ውሃ 1 ሊትር', p: 35, c: 'hot' }, { n: 'ውሃ ግማሽ', p: 25, c: 'hot' },
+        { n: 'አቮካዶ ጁስ', p: 120, c: 'juices' }, { n: 'ማንጎ ጁስ', p: 120, c: 'juices' }, { n: 'ፓፓያ ጁስ', p: 120, c: 'juices' }, { n: 'ሙዝ ጁስ', p: 120, c: 'juices' }, { n: 'አናናስ', p: 120, c: 'juices' }, { n: 'ተልባ ጁስ', p: 120, c: 'juices' }, { n: 'በሶ ጁስ', p: 120, c: 'juices' }, { n: 'ወተት በአቮካዶ', p: 200, c: 'juices' }, { n: 'ስፔሻል ጁስ', p: 250, c: 'juices' },
+        { n: 'ፓስታ በስጎ', p: 130, c: 'fasting' }, { n: 'ሽሮ', p: 120, c: 'fasting' }, { n: 'ተጋቢኖ', p: 130, c: 'fasting' }, { n: 'ሽሮ በሰላጣ', p: 180, c: 'fasting' }, { n: 'ፍርፍር', p: 100, c: 'fasting' }, { n: 'ሃፍ ሃፍ', p: 150, c: 'fasting' }, { n: 'ፉል ኖርማል', p: 90, c: 'fasting' }, { n: 'ፉል በአቮካዶ', p: 90, c: 'fasting' }, { n: 'ፉል በእንቁላል', p: 120, c: 'fasting' }, { n: 'ቲማቲም ለብለብ', p: 100, c: 'fasting' }, { n: 'በያይነት', p: 140, c: 'fasting' }, { n: 'ፎሶሊያ', p: 160, c: 'fasting' }, { n: 'አዚፋ', p: 160, c: 'fasting' }, { n: 'ቺፕስ 25', p: 25, c: 'fasting' }, { n: 'ቺፕስ 35', p: 35, c: 'fasting' }, { n: 'ቺፕስ 80', p: 80, c: 'fasting' }, { n: 'እርጥብ', p: 90, c: 'fasting' }, { n: 'እርጥብ ስፔሻል', p: 120, c: 'fasting' }, { n: 'ፓስታ በአትክልት', p: 140, c: 'fasting' }, { n: 'ሩዝ በአትክልት', p: 140, c: 'fasting' },
+        { n: 'ጥብስ', p: 270, c: 'nonfast' }, { n: 'ስጋ ፍርፍር', p: 250, c: 'nonfast' }, { n: 'ፓስታ በስጋ', p: 250, c: 'nonfast' }, { n: 'ፓስታ በ እንቁላል', p: 200, c: 'nonfast' }, { n: 'እንቁላል ሳንድዊች', p: 120, c: 'nonfast' }, { n: 'ጥብስ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'እንቁላል በስጋ', p: 250, c: 'nonfast' }, { n: 'እንቁላል ፍርፍር', p: 140, c: 'nonfast' }, { n: 'ቋንጣ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'ፉል በቅቤ', p: 140, c: 'nonfast' }, { n: 'ሽሮ በቅቤ', p: 180, c: 'nonfast' },
+        { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
     ];
 
-    let selItem = null;
-    let isAdmin = false;
+    let sel = null, isAdmin = false;
 
-    // --- INITIALIZATION ---
     window.onload = () => {
-        // Set Date
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('work-date').value = today;
-        document.getElementById('date-display').innerText = new Date().toDateString();
-
+        document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('work-date').onchange = sync;
         renderMenu();
-        
-        // Check Auth Status
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
-            updateAdminUI();
-            checkTimeRestriction(); // Check time immediately after auth
-            syncData();
+            document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
+            document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
+            sync();
         });
-
-        // Check time every minute
-        setInterval(checkTimeRestriction, 60000); 
     };
 
-    // --- TIME LOCK LOGIC ---
-    function checkTimeRestriction() {
-        const now = new Date();
-        const hour = now.getHours();
-        
-        // Rule: Locked from 22:00 (10 PM) to 06:00 (6 AM)
-        // If hour is greater/equal to 22 OR less than 6
-        const isOffHours = (hour >= 22 || hour < 6);
-        
-        const badge = document.getElementById('status-badge');
-        const text = document.getElementById('status-text');
-        const menuArea = document.getElementById('menu-area');
-        const warning = document.getElementById('off-hours-msg');
-
-        if (isOffHours) {
-            // It is night time
-            if (isAdmin) {
-                // Admin Override
-                badge.className = "shop-status status-open";
-                text.innerText = "ADMIN MODE (NIGHT)";
-                menuArea.classList.remove('locked-mode');
-                warning.style.display = 'none';
-            } else {
-                // Waiter Locked Out
-                badge.className = "shop-status status-closed";
-                text.innerText = "CLOSED";
-                menuArea.classList.add('locked-mode');
-                warning.style.display = 'block';
-            }
-        } else {
-            // Normal Day Time
-            badge.className = "shop-status status-open";
-            text.innerText = "OPEN";
-            menuArea.classList.remove('locked-mode');
-            warning.style.display = 'none';
-        }
-        
-        return isOffHours; // Return status for internal checks
-    }
-
-    // --- RENDER MENU ---
     function renderMenu() {
         MENU.forEach(i => {
-            const btn = document.createElement('button');
-            btn.className = `item-btn type-${i.c}`;
-            btn.innerHTML = `<strong>${i.n}</strong><span>${i.p}</span>`;
-            btn.onclick = () => { 
-                // Double check restriction on click
-                if(checkTimeRestriction() && !isAdmin) {
-                    alert("System is locked for the night. Contact Admin.");
-                    return;
-                }
-                openModal(i); 
-            };
+            const btn = document.createElement('div');
+            btn.className = `menu-btn ${['fasting','nonfast'].includes(i.c) ? 'food-btn' : (i.c=='add'?'add-btn':'')}`;
+            btn.innerHTML = `<strong>${i.n}</strong><br><small>${i.p} ETB</small>`;
+            btn.onclick = () => { sel = i; document.getElementById('m-item').innerText = i.n; document.getElementById('qty-modal').style.display='flex'; };
             document.getElementById('grid-' + i.c).appendChild(btn);
         });
     }
 
-    // --- TRANSACTIONS ---
-    function openModal(item) {
-        selItem = item;
-        document.getElementById('m-item').innerText = item.n;
-        document.getElementById('qty-modal').style.display = 'flex';
-        document.getElementById('m-qty').focus();
-    }
-
-    function closeModal() {
-        document.getElementById('qty-modal').style.display = 'none';
-        document.getElementById('m-qty').value = 1;
-    }
-
     async function confirmSale() {
-        // Final Security Check before writing to DB
-        if(checkTimeRestriction() && !isAdmin) {
-            alert("Action Blocked: Off-hours.");
-            closeModal();
-            return;
-        }
-
         const q = parseInt(document.getElementById('m-qty').value);
-        if(!q || q < 1) return;
-
-        try {
-            await db.collection('transactions').add({
-                n: selItem.n,
-                q: q,
-                p: selItem.p * q,
-                d: document.getElementById('work-date').value,
-                ex: false,
-                ts: Date.now()
-            });
-            closeModal();
-        } catch(e) {
-            alert("Error: " + e.message);
-        }
+        if(!q) return;
+        await db.collection('transactions').add({ n: sel.n, q: q, p: sel.p * q, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
+        closeModal();
     }
 
     async function saveEx() {
-        if(checkTimeRestriction() && !isAdmin) return;
-
-        const n = document.getElementById('ex-name').value;
-        const p = parseFloat(document.getElementById('ex-amt').value);
-        
-        if(!n || !p) return alert("Please fill both fields");
-
-        await db.collection('transactions').add({
-            n: "EXP: " + n,
-            q: 1,
-            p: p,
-            d: document.getElementById('work-date').value,
-            ex: true,
-            ts: Date.now()
-        });
-        document.getElementById('ex-name').value = ''; 
-        document.getElementById('ex-amt').value = '';
+        const n = document.getElementById('ex-name').value, p = parseFloat(document.getElementById('ex-amt').value);
+        if(!n || !p) return;
+        await db.collection('transactions').add({ n: "OUT: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: true, ts: Date.now() });
+        document.getElementById('ex-name').value = ''; document.getElementById('ex-amt').value = '';
     }
 
-    // --- DATA SYNC ---
-    function syncData() {
+    function sync() {
         const date = document.getElementById('work-date').value;
-        db.collection('transactions').where('d', '==', date).orderBy('ts', 'desc').onSnapshot(snap => {
-            let s=0, e=0, html='';
+        db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
+            let s=0, e=0, html='', sum = {};
             snap.forEach(doc => {
                 const t = doc.data();
                 if(t.ex) e += t.p; else s += t.p;
-                
-                // Row HTML
-                const delBtn = isAdmin ? `<button onclick="delDoc('${doc.id}')" style="color:red;border:none;bg:none;font-weight:bold;cursor:pointer;">&times;</button>` : '';
-                const rowColor = t.ex ? 'color:#d32f2f' : '';
-                
-                html += `<tr>
-                    <td style="${rowColor}">${t.n} <br><small style="color:#999">${new Date(t.ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small></td>
-                    <td>${t.q}</td>
-                    <td>${t.p}</td>
-                    <td class="no-print">${delBtn}</td>
-                </tr>`;
+                if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
+                sum[t.n].q += t.q; sum[t.n].p += t.p;
             });
-
+            for (let name in sum) {
+                const item = sum[name];
+                html += `<tr><td style="color:${item.isEx?'red':'black'}">${name}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
+            }
             document.getElementById('log-body').innerHTML = html;
-            document.getElementById('total-s').innerText = s.toLocaleString() + " ETB";
-            document.getElementById('total-e').innerText = e.toLocaleString() + " ETB";
-            document.getElementById('total-n').innerText = (s - e).toLocaleString() + " ETB";
+            document.getElementById('total-s').innerText = s;
+            document.getElementById('total-e').innerText = e;
+            document.getElementById('total-n').innerText = (s - e) + " ETB";
         });
     }
 
-    // --- ADMIN FUNCTIONS ---
-    async function handleAuth() {
-        if(auth.currentUser) { 
-            auth.signOut(); 
-        } else {
-            const email = prompt("Admin Email:");
-            const pass = prompt("Password:");
-            if(email && pass) {
-                await auth.signInWithEmailAndPassword(email, pass).catch(err => alert("Login Failed"));
-            }
-        }
-    }
-
-    function updateAdminUI() {
-        const ind = document.getElementById('admin-indicator');
-        const authBtn = document.getElementById('auth-btn');
-        const clearBtn = document.getElementById('clear-btn');
-
-        if (isAdmin) {
-            ind.innerText = "👨‍💼 ADMIN LOGGED IN";
-            ind.style.color = "green";
-            authBtn.innerText = "Logout";
-            clearBtn.style.display = 'block';
-        } else {
-            ind.innerText = "Waiter View";
-            ind.style.color = "gray";
-            authBtn.innerText = "Admin Login";
-            clearBtn.style.display = 'none';
-        }
-    }
-
-    async function delDoc(id) {
-        if(confirm("Delete this entry?")) await db.collection('transactions').doc(id).delete();
+    function initiatePrint() {
+        document.getElementById('pdf-date').innerText = "DATE: " + document.getElementById('work-date').value;
+        window.print();
+        setTimeout(() => {
+            if(confirm("Report Saved? Clear all daily records for a fresh start?")) clearDay();
+        }, 1500);
     }
 
     async function clearDay() {
-        if(!confirm("⚠️ WARNING: This will delete ALL transactions for today permanently. Continue?")) return;
-        
-        const date = document.getElementById('work-date').value;
-        const snap = await db.collection('transactions').where('d', '==', date).get();
-        
+        const snap = await db.collection('transactions').where('d', '==', document.getElementById('work-date').value).get();
         const batch = db.batch();
-        snap.forEach(doc => batch.delete(doc.ref));
+        snap.forEach(d => batch.delete(d.ref));
         await batch.commit();
-        alert("Day cleared successfully.");
+        alert("System Brushed. Ready for next day.");
     }
 
+    async function delDoc(id) { if(confirm("Admin: Delete?")) await db.collection('transactions').doc(id).delete(); }
+    async function handleAuth() {
+        if(auth.currentUser) { auth.signOut(); } 
+        else {
+            const email = prompt("Admin Email:"), pass = prompt("Password:");
+            if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
+        }
+    }
+    function closeModal() { document.getElementById('qty-modal').style.display='none'; document.getElementById('m-qty').value = 1; }
 </script>
 </body>
 </html>
