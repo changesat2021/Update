@@ -3,176 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Admin</title>
+    <title>Bean & Bloom - Inventory</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
     <style>
-        body { font-family: sans-serif; background: #f4f4f4; padding: 20px; max-width: 800px; margin: 0 auto; }
-        .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        input, textarea, button { width: 100%; padding: 12px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
-        button { background: #6F4E37; color: white; border: none; font-weight: bold; cursor: pointer; padding: 15px; }
-        button:active { opacity: 0.9; }
-        button.del { background: #c0392b; width: auto; padding: 8px 15px; }
-        button.edit { background: #2980b9; width: auto; padding: 8px 15px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-        .row-form { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
-        h2 { color: #6F4E37; margin-top: 0; }
-        .note { font-size: 0.8rem; color: #666; background: #eee; padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 4px solid #6F4E37; }
-        .error-msg { color: red; font-size: 0.9rem; display: none; margin-bottom: 10px; }
+        :root { --primary: #6F4E37; --white: #fff; --radius: 10px; }
+        body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        header { background: var(--white); padding: 15px; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        h2 { margin: 0; color: var(--primary); }
+        
+        /* Stock Cards */
+        .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .stock-card { background: white; padding: 20px; border-radius: var(--radius); box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid #ccc; position: relative; }
+        .stock-card.low { border-left-color: red; }
+        .stock-card.good { border-left-color: green; }
+        
+        .stock-name { font-weight: bold; font-size: 1.1rem; display: block; margin-bottom: 5px; }
+        .stock-val { font-size: 1.5rem; font-weight: 800; color: #333; }
+        .unit { font-size: 0.8rem; color: #777; }
+
+        /* Add Stock Form */
+        .controls { background: white; padding: 15px; border-radius: var(--radius); margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 5px; flex: 1; }
+        button { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { opacity: 0.9; }
+        .back-btn { background: #555; text-decoration: none; display: inline-block; color: white; padding: 10px 20px; border-radius: 5px; margin-bottom: 10px;}
     </style>
 </head>
 <body>
-    <div id="login-scr" class="card" style="text-align:center;">
-        <h2>Admin Access Required</h2>
-        <button onclick="location.href='index.html'">Go Back</button>
+
+<div class="container">
+    <a href="index.html" class="back-btn">← Back to POS</a>
+    
+    <header>
+        <h2>📦 Stock Inventory</h2>
+        <div id="auth-status"></div>
+    </header>
+
+    <div class="controls">
+        <input type="text" id="ing-name" placeholder="Ingredient Name (e.g., ቡና ፍሬ)">
+        <input type="number" id="ing-qty" placeholder="Amount to Add (KG/L)" step="0.01">
+        <button onclick="addStock()">+ Add to Stock</button>
     </div>
 
-    <div id="app" style="display:none;">
-        <div class="card">
-            <h2>📦 Stock Manager</h2>
-            <div class="row-form">
-                <input id="i-name" placeholder="Item Name (e.g. Coffee Powder)">
-                <input id="i-unit" placeholder="Unit (kg, g, pcs)">
-                <input type="number" id="i-qty" placeholder="Qty">
-            </div>
-            
-            <label style="font-size:0.8rem; font-weight:bold;">Recipe / Ingredients (Optional)</label>
-            <textarea id="i-ing" rows="3" placeholder='Example: {"Coffee Powder": 15, "Sugar": 10}'></textarea>
-            
-            <div id="err-box" class="error-msg"></div>
-            
-            <div class="note">
-                <strong>How to Link:</strong><br>
-                1. Create Stock: Name="Coffee Powder", Qty=1000, Ingredients=Empty.<br>
-                2. Create Menu: Name="ቡና", Qty=0, Ingredients={"Coffee Powder": 15}.
-            </div>
-            
-            <button onclick="saveItem()">Save / Update Item</button>
-        </div>
-
-        <div class="card">
-            <h3>Inventory List</h3>
-            <div style="overflow-x:auto;">
-                <table>
-                    <thead><tr><th>Name</th><th>Qty</th><th>Unit</th><th>Recipe?</th><th>Action</th></tr></thead>
-                    <tbody id="list"></tbody>
-                </table>
-            </div>
-        </div>
-        <button onclick="firebase.auth().signOut(); location.href='index.html'" style="background:#7f8c8d">Logout</button>
+    <div id="inventory-grid" class="stock-grid">
+        <p>Loading inventory...</p>
     </div>
+</div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
-            authDomain: "bean-5a113.firebaseapp.com",
-            projectId: "bean-5a113",
-            storageBucket: "bean-5a113.firebasestorage.app",
-            messagingSenderId: "702927377502",
-            appId: "1:702927377502:web:9e50192a0c431da69850cf"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore(), auth = firebase.auth();
-        const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
+<script>
+    const firebaseConfig = { 
+        apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw", 
+        authDomain: "bean-5a113.firebaseapp.com", 
+        projectId: "bean-5a113", 
+        storageBucket: "bean-5a113.firebasestorage.app", 
+        messagingSenderId: "702927377502", 
+        appId: "1:702927377502:web:9e50192a0c431da69850cf" 
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        auth.onAuthStateChanged(u => {
-            if(u && u.uid === adminUID) {
-                document.getElementById('login-scr').style.display='none';
-                document.getElementById('app').style.display='block';
-                loadItems();
-            } else {
-                document.getElementById('login-scr').style.display='block';
-                document.getElementById('app').style.display='none';
-            }
+    // Load Inventory Real-time
+    db.collection('inventory').onSnapshot(snap => {
+        const grid = document.getElementById('inventory-grid');
+        grid.innerHTML = '';
+        
+        snap.forEach(doc => {
+            const data = doc.data();
+            const div = document.createElement('div');
+            // If stock < 5, highlight red (low)
+            div.className = `stock-card ${data.q < 5 ? 'low' : 'good'}`;
+            
+            div.innerHTML = `
+                <span class="stock-name">${doc.id}</span>
+                <span class="stock-val">${data.q.toFixed(2)}</span>
+                <span class="unit">KG / Liters</span>
+                <div style="margin-top:10px; font-size:0.8rem; color:#888;">
+                   Last update: ${new Date(data.ts).toLocaleDateString()}
+                </div>
+            `;
+            grid.appendChild(div);
         });
+        
+        if(snap.empty) grid.innerHTML = '<p>No ingredients found. Add one above.</p>';
+    });
 
-        async function saveItem() {
-            const errBox = document.getElementById('err-box');
-            errBox.style.display = 'none';
-            
-            const n = document.getElementById('i-name').value.trim();
-            const u = document.getElementById('i-unit').value.trim();
-            const q = parseFloat(document.getElementById('i-qty').value) || 0;
-            let ingStr = document.getElementById('i-ing').value.trim();
-            let ing = null;
+    async function addStock() {
+        const name = document.getElementById('ing-name').value.trim();
+        const qty = parseFloat(document.getElementById('ing-qty').value);
 
-            if(!n) {
-                errBox.innerText = "Error: Item Name is required.";
-                errBox.style.display = 'block';
-                return;
-            }
+        if(!name || !qty) return alert("Please enter name and quantity");
 
-            if(ingStr) {
-                // AUTO-FIX: Replace mobile 'curly quotes' with standard "quotes"
-                ingStr = ingStr.replace(/[\u201C\u201D]/g, '"').replace(/[']/g, '"');
-                
-                try { 
-                    ing = JSON.parse(ingStr); 
-                } catch(e) { 
-                    errBox.innerHTML = "<b>JSON Error:</b> Check your format.<br>Correct: {\"Coffee Powder\": 15}";
-                    errBox.style.display = 'block';
-                    return; 
-                }
-            }
+        const ref = db.collection('inventory').doc(name);
+        
+        // Use Firebase Increment to atomatically add to existing value
+        await ref.set({
+            q: firebase.firestore.FieldValue.increment(qty),
+            ts: Date.now()
+        }, { merge: true });
 
-            try {
-                // Check if exists
-                const snap = await db.collection('inventory').where('itemName', '==', n).limit(1).get();
-                
-                if(!snap.empty) {
-                    await snap.docs[0].ref.update({ unit: u, quantity: q, ingredients: ing });
-                    alert("Updated: " + n);
-                } else {
-                    await db.collection('inventory').add({ itemName: n, unit: u, quantity: q, ingredients: ing });
-                    alert("Saved New Item: " + n);
-                }
-                
-                // Clear form
-                document.getElementById('i-name').value = '';
-                document.getElementById('i-unit').value = '';
-                document.getElementById('i-qty').value = '';
-                document.getElementById('i-ing').value = '';
-            } catch(error) {
-                errBox.innerText = "Database Error: " + error.message;
-                errBox.style.display = 'block';
-            }
-        }
-
-        function loadItems() {
-            db.collection('inventory').orderBy('itemName').onSnapshot(snap => {
-                let html = '';
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    const hasRecipe = d.ingredients ? '✅' : '-';
-                    // Escape quotes for the Edit button function
-                    const safeIng = d.ingredients ? JSON.stringify(d.ingredients).replace(/"/g, '&quot;') : '';
-                    
-                    html += `<tr>
-                        <td>${d.itemName}</td>
-                        <td>${d.quantity}</td>
-                        <td>${d.unit}</td>
-                        <td>${hasRecipe}</td>
-                        <td style="display:flex; gap:5px;">
-                            <button class="edit" onclick="editItem('${d.itemName}','${d.unit}',${d.quantity},'${safeIng}')">Edit</button>
-                            <button class="del" onclick="del('${doc.id}')">X</button>
-                        </td>
-                    </tr>`;
-                });
-                document.getElementById('list').innerHTML = html;
-            });
-        }
-
-        async function del(id) { if(confirm("Delete stock item?")) await db.collection('inventory').doc(id).delete(); }
-
-        window.editItem = (n, u, q, i) => {
-            document.getElementById('i-name').value = n;
-            document.getElementById('i-unit').value = u;
-            document.getElementById('i-qty').value = q;
-            document.getElementById('i-ing').value = i;
-            window.scrollTo(0,0);
-        }
-    </script>
+        alert(`${qty} added to ${name}`);
+        document.getElementById('ing-name').value = '';
+        document.getElementById('ing-qty').value = '';
+    }
+</script>
 </body>
 </html>
