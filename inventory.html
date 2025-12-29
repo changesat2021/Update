@@ -10,14 +10,17 @@
     <style>
         body { font-family: sans-serif; background: #f4f4f4; padding: 20px; max-width: 800px; margin: 0 auto; }
         .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        input, textarea, button { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px; }
-        button { background: #6F4E37; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button.del { background: #c0392b; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        input, textarea, button { width: 100%; padding: 12px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
+        button { background: #6F4E37; color: white; border: none; font-weight: bold; cursor: pointer; padding: 15px; }
+        button:active { opacity: 0.9; }
+        button.del { background: #c0392b; width: auto; padding: 8px 15px; }
+        button.edit { background: #2980b9; width: auto; padding: 8px 15px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
         .row-form { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
         h2 { color: #6F4E37; margin-top: 0; }
-        .note { font-size: 0.8rem; color: #666; background: #eee; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+        .note { font-size: 0.8rem; color: #666; background: #eee; padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 4px solid #6F4E37; }
+        .error-msg { color: red; font-size: 0.9rem; display: none; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -30,20 +33,33 @@
         <div class="card">
             <h2>📦 Stock Manager</h2>
             <div class="row-form">
-                <input id="i-name" placeholder="Item Name (e.g. Milk or Macchiato)">
-                <input id="i-unit" placeholder="Unit (kg, pcs)">
+                <input id="i-name" placeholder="Item Name (e.g. Coffee Powder)">
+                <input id="i-unit" placeholder="Unit (kg, g, pcs)">
                 <input type="number" id="i-qty" placeholder="Qty">
             </div>
-            <textarea id="i-ing" rows="3" placeholder='Ingredients JSON (Optional). E.g. {"Milk": 0.05, "Coffee": 0.01}'></textarea>
-            <div class="note">To create a Recipe for a Menu Item (e.g. "Macchiato"), set Qty to 0 and fill Ingredients. <br>To create Stock (e.g. "Milk"), fill Qty and leave Ingredients empty.</div>
+            
+            <label style="font-size:0.8rem; font-weight:bold;">Recipe / Ingredients (Optional)</label>
+            <textarea id="i-ing" rows="3" placeholder='Example: {"Coffee Powder": 15, "Sugar": 10}'></textarea>
+            
+            <div id="err-box" class="error-msg"></div>
+            
+            <div class="note">
+                <strong>How to Link:</strong><br>
+                1. Create Stock: Name="Coffee Powder", Qty=1000, Ingredients=Empty.<br>
+                2. Create Menu: Name="ቡና", Qty=0, Ingredients={"Coffee Powder": 15}.
+            </div>
+            
             <button onclick="saveItem()">Save / Update Item</button>
         </div>
 
         <div class="card">
-            <table>
-                <thead><tr><th>Name</th><th>Qty</th><th>Unit</th><th>Recipe?</th><th>Action</th></tr></thead>
-                <tbody id="list"></tbody>
-            </table>
+            <h3>Inventory List</h3>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead><tr><th>Name</th><th>Qty</th><th>Unit</th><th>Recipe?</th><th>Action</th></tr></thead>
+                    <tbody id="list"></tbody>
+                </table>
+            </div>
         </div>
         <button onclick="firebase.auth().signOut(); location.href='index.html'" style="background:#7f8c8d">Logout</button>
     </div>
@@ -73,33 +89,55 @@
         });
 
         async function saveItem() {
+            const errBox = document.getElementById('err-box');
+            errBox.style.display = 'none';
+            
             const n = document.getElementById('i-name').value.trim();
             const u = document.getElementById('i-unit').value.trim();
             const q = parseFloat(document.getElementById('i-qty').value) || 0;
-            const ingStr = document.getElementById('i-ing').value.trim();
+            let ingStr = document.getElementById('i-ing').value.trim();
             let ing = null;
 
-            if(!n) return alert("Name required");
+            if(!n) {
+                errBox.innerText = "Error: Item Name is required.";
+                errBox.style.display = 'block';
+                return;
+            }
 
             if(ingStr) {
-                try { ing = JSON.parse(ingStr); } 
-                catch(e) { return alert("Invalid JSON format"); }
+                // AUTO-FIX: Replace mobile 'curly quotes' with standard "quotes"
+                ingStr = ingStr.replace(/[\u201C\u201D]/g, '"').replace(/[']/g, '"');
+                
+                try { 
+                    ing = JSON.parse(ingStr); 
+                } catch(e) { 
+                    errBox.innerHTML = "<b>JSON Error:</b> Check your format.<br>Correct: {\"Coffee Powder\": 15}";
+                    errBox.style.display = 'block';
+                    return; 
+                }
             }
 
-            // Check if exists to update or add
-            const snap = await db.collection('inventory').where('itemName', '==', n).limit(1).get();
-            
-            if(!snap.empty) {
-                await snap.docs[0].ref.update({ unit: u, quantity: q, ingredients: ing });
-            } else {
-                await db.collection('inventory').add({ itemName: n, unit: u, quantity: q, ingredients: ing });
+            try {
+                // Check if exists
+                const snap = await db.collection('inventory').where('itemName', '==', n).limit(1).get();
+                
+                if(!snap.empty) {
+                    await snap.docs[0].ref.update({ unit: u, quantity: q, ingredients: ing });
+                    alert("Updated: " + n);
+                } else {
+                    await db.collection('inventory').add({ itemName: n, unit: u, quantity: q, ingredients: ing });
+                    alert("Saved New Item: " + n);
+                }
+                
+                // Clear form
+                document.getElementById('i-name').value = '';
+                document.getElementById('i-unit').value = '';
+                document.getElementById('i-qty').value = '';
+                document.getElementById('i-ing').value = '';
+            } catch(error) {
+                errBox.innerText = "Database Error: " + error.message;
+                errBox.style.display = 'block';
             }
-            
-            document.getElementById('i-name').value = '';
-            document.getElementById('i-unit').value = '';
-            document.getElementById('i-qty').value = '';
-            document.getElementById('i-ing').value = '';
-            loadItems();
         }
 
         function loadItems() {
@@ -108,14 +146,17 @@
                 snap.forEach(doc => {
                     const d = doc.data();
                     const hasRecipe = d.ingredients ? '✅' : '-';
+                    // Escape quotes for the Edit button function
+                    const safeIng = d.ingredients ? JSON.stringify(d.ingredients).replace(/"/g, '&quot;') : '';
+                    
                     html += `<tr>
                         <td>${d.itemName}</td>
                         <td>${d.quantity}</td>
                         <td>${d.unit}</td>
                         <td>${hasRecipe}</td>
-                        <td>
-                            <button class="del" onclick="del('${doc.id}')" style="padding:5px; width:auto;">X</button>
-                            <button onclick="edit('${d.itemName}','${d.unit}',${d.quantity},'${d.ingredients?JSON.stringify(d.ingredients).replace(/"/g, '&quot;'):''}')" style="padding:5px; width:auto; background:#2980b9;">Edit</button>
+                        <td style="display:flex; gap:5px;">
+                            <button class="edit" onclick="editItem('${d.itemName}','${d.unit}',${d.quantity},'${safeIng}')">Edit</button>
+                            <button class="del" onclick="del('${doc.id}')">X</button>
                         </td>
                     </tr>`;
                 });
@@ -125,11 +166,12 @@
 
         async function del(id) { if(confirm("Delete stock item?")) await db.collection('inventory').doc(id).delete(); }
 
-        window.edit = (n, u, q, i) => {
+        window.editItem = (n, u, q, i) => {
             document.getElementById('i-name').value = n;
             document.getElementById('i-unit').value = u;
             document.getElementById('i-qty').value = q;
             document.getElementById('i-ing').value = i;
+            window.scrollTo(0,0);
         }
     </script>
 </body>
