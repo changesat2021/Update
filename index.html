@@ -1,111 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Bean & Bloom POS - Final</title>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<style>
-    :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; }
-    body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
-    .container { max-width: 650px; margin: 0 auto; padding: 15px; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bean & Bloom POS - Final</title>
     
-    /* UI Components */
-    header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
-    .val { font-size: 1.1rem; font-weight: 800; display: block; }
-    .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
-    
-    /* Menu */
-    .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
-    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
-    .food-btn { border-left-color: var(--food); }
-    .add-btn { border-left-color: #7f8c8d; }
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
-    /* Tables */
-    table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
-    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
-    .print-only { display: none; }
+    <style>
+        :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; }
+        body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
+        .container { max-width: 650px; margin: 0 auto; padding: 15px; }
+        
+        /* UI Components */
+        header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
+        .val { font-size: 1.1rem; font-weight: 800; display: block; }
+        .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
+        
+        /* Menu */
+        .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
+        .food-btn { border-left-color: var(--food); }
+        .add-btn { border-left-color: #7f8c8d; }
 
-    @media print {
-        .no-print { display: none !important; }
-        .print-only { display: block !important; }
-        body { background: white; }
-        .container { max-width: 100%; padding: 0; }
-        .card { border: none; }
-    }
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        .print-only { display: none; }
 
-    .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
-    .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
-    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
-</style>
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
+            .container { max-width: 100%; padding: 0; }
+            .card { border: none; }
+        }
+
+        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; z-index: 99; }
+        .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
+        
+        /* New Link Button */
+        .inv-link { text-decoration: none; background: #eee; padding: 10px; border-radius: 5px; color: #333; font-weight: bold; font-size: 0.8rem; display: none; }
+    </style>
 </head>
 <body>
-<div class="container">
-<div class="print-only" style="text-align:center;">
-    <h1 style="margin:0;">BEAN & BLOOM COFFEEHOUSE</h1>
-    <p id="pdf-date" style="font-weight:bold;"></p>
-    <hr>
-    <h3>DAILY SALES SUMMARY</h3>
-</div>
-
-<header class="no-print">
-    <h2 style="color:var(--primary)">☕ Bean & Bloom</h2>
-    <input type="date" id="work-date">
-</header>
-
-<div class="dashboard">
-    <div class="card"><span class="lbl">Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
-    <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
-    <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
-</div>
-
-<div class="no-print">
-    <div class="section-title">Hot & Cold Drinks</div><div id="grid-hot" class="menu-grid"></div>
-    <div class="section-title">Special Juices</div><div id="grid-juices" class="menu-grid"></div>
-    <div class="section-title">Fasting Food</div><div id="grid-fasting" class="menu-grid"></div>
-    <div class="section-title">Non-Fasting Food</div><div id="grid-nonfast" class="menu-grid"></div>
-    <div class="section-title">Additives & Snacks</div><div id="grid-add" class="menu-grid"></div>
-
-    <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed red;">
-        <p style="font-weight:bold; color:red; font-size:0.7rem; margin-bottom:5px;">ADD EXPENSE/PAYOUT</p>
-        <div style="display:flex; gap:5px;">
-            <input type="text" id="ex-name" placeholder="Reason..." style="flex:2; padding:8px;">
-            <input type="number" id="ex-amt" placeholder="Amount" style="flex:1; padding:8px;">
+    <div class="container">
+        <div class="print-only" style="text-align:center;">
+            <h1 style="margin:0;">BEAN & BLOOM COFFEEHOUSE</h1>
+            <p id="pdf-date" style="font-weight:bold;"></p>
+            <hr>
+            <h3>DAILY SALES SUMMARY</h3>
         </div>
-        <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout</button>
+
+        <header class="no-print">
+            <h2 style="color:var(--primary)">☕ Bean & Bloom</h2>
+            <input type="date" id="work-date">
+        </header>
+
+        <div class="dashboard">
+            <div class="card"><span class="lbl">Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
+            <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
+            <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
+        </div>
+
+        <div class="no-print">
+            <div class="section-title">Hot & Cold Drinks</div><div id="grid-hot" class="menu-grid"></div>
+            <div class="section-title">Special Juices</div><div id="grid-juices" class="menu-grid"></div>
+            <div class="section-title">Fasting Food</div><div id="grid-fasting" class="menu-grid"></div>
+            <div class="section-title">Non-Fasting Food</div><div id="grid-nonfast" class="menu-grid"></div>
+            <div class="section-title">Additives & Snacks</div><div id="grid-add" class="menu-grid"></div>
+
+            <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed red;">
+                <p style="font-weight:bold; color:red; font-size:0.7rem; margin-bottom:5px;">ADD EXPENSE/PAYOUT</p>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="ex-name" placeholder="Reason..." style="flex:2; padding:8px;">
+                    <input type="number" id="ex-amt" placeholder="Amount" style="flex:1; padding:8px;">
+                </div>
+                <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout</button>
+            </div>
+        </div>
+
+        <div class="card" style="padding:0; margin-top:20px; overflow:hidden;">
+            <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Itemized Report</h4>
+            <table>
+                <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
+                <tbody id="log-body"></tbody>
+            </table>
+        </div>
+        <br><br>
+
+        <div class="admin-nav no-print">
+            <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
+            <a href="inventory.html" id="inv-btn" class="inv-link">📦 Stock</a>
+            <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Save PDF & Finalize</button>
+        </div>
     </div>
-</div>
 
-<div class="card" style="padding:0; margin-top:20px; overflow:hidden;">
-    <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Itemized Report</h4>
-    <table>
-        <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
-        <tbody id="log-body"></tbody>
-    </table>
-</div>
-
-<div class="admin-nav no-print">
-    <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
-    <a href="inventory.html" id="inv-link" style="display:none; color:var(--primary); font-weight:bold; text-decoration:none; padding-top:12px;">Manage Stock</a>
-    <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Save PDF & Finalize</button>
-</div>
-</div>
-
-<div id="qty-modal" class="modal">
-<div class="modal-content" style="background:white; padding:20px; border-radius:15px; text-align:center;">
-    <h3 id="m-item">Item</h3>
-    <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100px; text-align:center; margin:15px;">
-    <div style="display:flex; gap:10px;">
-        <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
-        <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Add</button>
+    <div id="qty-modal" class="modal">
+        <div class="modal-content" style="background:white; padding:20px; border-radius:15px; text-align:center;">
+            <h3 id="m-item">Item</h3>
+            <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100px; text-align:center; margin:15px;">
+            <div style="display:flex; gap:10px;">
+                <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
+                <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Add</button>
+            </div>
+        </div>
     </div>
-</div>
-</div>
 
 <script>
     const firebaseConfig = {
@@ -116,9 +122,19 @@
         messagingSenderId: "702927377502",
         appId: "1:702927377502:web:9e50192a0c431da69850cf"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore(), auth = firebase.auth();
     const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
+
+    // --- INVENTORY RECIPES ---
+    // 'Menu Item Name' : { ing: 'Inventory Item Name', use: Amount to deduct per 1 item }
+    const RECIPES = {
+        'ቡና':       { ing: 'ቡና ፍሬ', use: 1/75 },
+        'ሻይ':       { ing: 'Tea Leaf', use: 0.002 }, 
+        'ማኪያቶ':    { ing: 'Milk', use: 0.15 },
+        // Add more recipes here as needed
+    };
 
     const MENU = [
         { n: 'ቡና', p: 40, c: 'hot' }, { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ለውዝ', p: 50, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
@@ -139,7 +155,7 @@
             isAdmin = (user && user.uid === adminUID);
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
-            document.getElementById('inv-link').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('inv-btn').style.display = isAdmin ? 'block' : 'none';
             sync();
         });
     };
@@ -157,42 +173,23 @@
     async function confirmSale() {
         const q = parseInt(document.getElementById('m-qty').value);
         if(!q) return;
-        
-        // 1. Record Transaction (UI Priority)
+
+        // 1. Log Transaction
         await db.collection('transactions').add({ n: sel.n, q: q, p: sel.p * q, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
+
+        // 2. Deduct Inventory (if recipe exists)
+        const recipe = RECIPES[sel.n];
+        if(recipe) {
+            // Negative increment to subtract
+            const amountToDeduct = -1 * (q * recipe.use);
+            db.collection('inventory').doc(recipe.ing).update({
+                q: firebase.firestore.FieldValue.increment(amountToDeduct),
+                ts: Date.now()
+            }).catch(err => console.log("Inventory update skipped: Item might not exist in stock yet."));
+        }
+
         closeModal();
-
-        // 2. Background Inventory Update
-        updateInventory(sel.n, q);
     }
-
-    // --- INVENTORY LOGIC (SILENT) ---
-    async function updateInventory(itemName, qtySold) {
-        try {
-            // Find recipe for sold item
-            const snap = await db.collection('inventory').where('itemName', '==', itemName).limit(1).get();
-            if(snap.empty) return; // Not tracked
-            
-            const itemData = snap.docs[0].data();
-            if(!itemData.ingredients) return; // No ingredients defined
-
-            // Deduct each ingredient
-            for (const [ingName, amount] of Object.entries(itemData.ingredients)) {
-                // Find the Raw Material doc
-                const stockSnap = await db.collection('inventory').where('itemName', '==', ingName).limit(1).get();
-                if(!stockSnap.empty) {
-                    const stockDoc = stockSnap.docs[0];
-                    const ref = stockDoc.ref;
-                    await db.runTransaction(async (t) => {
-                        const doc = await t.get(ref);
-                        const newQty = (doc.data().quantity || 0) - (amount * qtySold);
-                        t.update(ref, { quantity: newQty });
-                    });
-                }
-            }
-        } catch(e) { console.error("Inv Error:", e); }
-    }
-    // --------------------------------
 
     async function saveEx() {
         const n = document.getElementById('ex-name').value, p = parseFloat(document.getElementById('ex-amt').value);
@@ -239,7 +236,7 @@
     }
 
     async function delDoc(id) { if(confirm("Admin: Delete?")) await db.collection('transactions').doc(id).delete(); }
-    
+
     async function handleAuth() {
         if(auth.currentUser) { auth.signOut(); } 
         else {
