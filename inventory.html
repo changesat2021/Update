@@ -3,243 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Control - Admin</title>
+    <title>Inventory Admin</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <style>
-        :root { --primary: #6F4E37; --danger: #c0392b; --warning: #f1c40f; --success: #27ae60; --white: #fff; --radius: 10px; }
         body { font-family: sans-serif; background: #f4f4f4; padding: 20px; max-width: 800px; margin: 0 auto; }
-        
-        h2, h3 { color: var(--primary); border-bottom: 2px solid #ddd; padding-bottom: 5px; }
-        
-        .card { background: var(--white); padding: 20px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        
-        /* Forms */
-        .form-group { margin-bottom: 10px; display: grid; gap: 5px; }
-        input, select, button { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%; box-sizing: border-box; }
-        button { cursor: pointer; background: var(--primary); color: white; border: none; font-weight: bold; }
-        button:hover { opacity: 0.9; }
-        .btn-danger { background: var(--danger); }
-        
-        /* Table */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        input, textarea, button { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #6F4E37; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button.del { background: #c0392b; }
+        table { width: 100%; border-collapse: collapse; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #eee; }
-        
-        /* Indicators */
-        .status-ok { border-left: 5px solid var(--success); }
-        .status-low { border-left: 5px solid var(--warning); background: #fffcf0; }
-        .status-out { border-left: 5px solid var(--danger); background: #fff0f0; }
-
-        .nav-link { display: inline-block; margin-bottom: 15px; color: var(--primary); text-decoration: none; font-weight: bold; }
+        .row-form { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+        h2 { color: #6F4E37; margin-top: 0; }
+        .note { font-size: 0.8rem; color: #666; background: #eee; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-
-    <a href="index.html" class="nav-link">← Back to POS</a>
-    
-    <div id="auth-check" style="display:none; text-align:center; padding:50px;">
-        <h2>Access Denied</h2>
-        <p>Verifying Credentials...</p>
-        <a href="index.html">Go Back</a>
+    <div id="login-scr" class="card" style="text-align:center;">
+        <h2>Admin Access Required</h2>
+        <button onclick="location.href='index.html'">Go Back</button>
     </div>
 
-    <div id="admin-panel" style="display:none;">
-        <h2>📦 Inventory Management (Admin)</h2>
-
+    <div id="app" style="display:none;">
         <div class="card">
-            <h3>Add / Restock Material</h3>
-            <div class="form-group" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
-                <input type="text" id="mat-name" placeholder="Name (e.g. Coffee Beans)">
-                <input type="text" id="mat-unit" placeholder="Unit (kg, L)">
-                <input type="number" id="mat-cap" placeholder="Servings per Unit">
-                <input type="number" id="mat-qty" placeholder="Qty to Add">
+            <h2>📦 Stock Manager</h2>
+            <div class="row-form">
+                <input id="i-name" placeholder="Item Name (e.g. Milk or Macchiato)">
+                <input id="i-unit" placeholder="Unit (kg, pcs)">
+                <input type="number" id="i-qty" placeholder="Qty">
             </div>
-            <button onclick="addMaterial()">Update / Add Stock</button>
+            <textarea id="i-ing" rows="3" placeholder='Ingredients JSON (Optional). E.g. {"Milk": 0.05, "Coffee": 0.01}'></textarea>
+            <div class="note">To create a Recipe for a Menu Item (e.g. "Macchiato"), set Qty to 0 and fill Ingredients. <br>To create Stock (e.g. "Milk"), fill Qty and leave Ingredients empty.</div>
+            <button onclick="saveItem()">Save / Update Item</button>
         </div>
 
         <div class="card">
-            <h3>Recipe Mapper</h3>
-            <p style="font-size:0.8rem; color:#666;">Link a POS Menu Item to a Raw Material.</p>
-            <div class="form-group" style="grid-template-columns: 2fr 2fr 1fr auto;">
-                <select id="recipe-item"></select>
-                <select id="recipe-mat"></select>
-                <input type="number" id="recipe-deduct" value="1" placeholder="Deduct count">
-                <button onclick="saveRecipe()">Link</button>
-            </div>
-            <div id="active-recipes" style="margin-top:10px; font-size:0.8rem;"></div>
-        </div>
-
-        <div class="card">
-            <h3>Current Stock Levels</h3>
             <table>
-                <thead>
-                    <tr>
-                        <th>Material</th>
-                        <th>Raw Qty</th>
-                        <th>Rem. Servings</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="inventory-list"></tbody>
+                <thead><tr><th>Name</th><th>Qty</th><th>Unit</th><th>Recipe?</th><th>Action</th></tr></thead>
+                <tbody id="list"></tbody>
             </table>
         </div>
+        <button onclick="firebase.auth().signOut(); location.href='index.html'" style="background:#7f8c8d">Logout</button>
     </div>
 
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
-        authDomain: "bean-5a113.firebaseapp.com",
-        projectId: "bean-5a113",
-        storageBucket: "bean-5a113.firebasestorage.app",
-        messagingSenderId: "702927377502",
-        appId: "1:702927377502:web:9e50192a0c431da69850cf"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore(), auth = firebase.auth();
-    const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
+            authDomain: "bean-5a113.firebaseapp.com",
+            projectId: "bean-5a113",
+            storageBucket: "bean-5a113.firebasestorage.app",
+            messagingSenderId: "702927377502",
+            appId: "1:702927377502:web:9e50192a0c431da69850cf"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore(), auth = firebase.auth();
+        const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
-    const POS_MENU = [
-        'ቡና', 'ሻይ', 'ለውዝ', 'ወተት', 'ማኪያቶ', 'ቀሽር', 'ስፕሪስ',
-        'ለስላሳ', 'ውሃ 2 ሊትር', 'ውሃ 1 ሊትር', 'ውሃ ግማሽ',
-        'አቮካዶ ጁስ', 'ማንጎ ጁስ', 'ፓፓያ ጁስ', 'ሙዝ ጁስ', 'አናናስ', 'ተልባ ጁስ', 'በሶ ጁስ', 'ወተት በአቮካዶ', 'ስፔሻል ጁስ',
-        'ፓስታ በስጎ', 'ሽሮ', 'ተጋቢኖ', 'ሽሮ በሰላጣ', 'ፍርፍር', 'ሃፍ ሃፍ', 'ፉል ኖርማል', 'ፉል በአቮካዶ', 'ፉል በእንቁላል', 'ቲማቲም ለብለብ', 'በያይነት', 'ፎሶሊያ', 'አዚፋ', 'ቺፕስ 25', 'ቺፕስ 35', 'ቺፕስ 80', 'እርጥብ', 'እርጥብ ስፔሻል', 'ፓስታ በአትክልት', 'ሩዝ በአትክልት',
-        'ጥብስ', 'ስጋ ፍርፍር', 'ፓስታ በስጋ', 'ፓስታ በ እንቁላል', 'እንቁላል ሳንድዊች', 'ጥብስ ፍርፍር', 'እንቁላል በስጋ', 'እንቁላል ፍርፍር', 'ቋንጣ ፍርፍር', 'ፉል በቅቤ', 'ሽሮ በቅቤ'
-    ];
-
-    window.onload = () => {
-        auth.onAuthStateChanged(user => {
-            if(user && user.uid === adminUID) {
-                document.getElementById('admin-panel').style.display = 'block';
-                init();
+        auth.onAuthStateChanged(u => {
+            if(u && u.uid === adminUID) {
+                document.getElementById('login-scr').style.display='none';
+                document.getElementById('app').style.display='block';
+                loadItems();
             } else {
-                document.getElementById('auth-check').style.display = 'block';
-                document.getElementById('auth-check').innerHTML = `<h2>Access Denied</h2><p>Restricted to Admin Only.</p><a href="index.html">Go Back</a>`;
+                document.getElementById('login-scr').style.display='block';
+                document.getElementById('app').style.display='none';
             }
         });
-    };
 
-    function init() {
-        loadInventory();
-        loadRecipes();
-        
-        const itemSel = document.getElementById('recipe-item');
-        POS_MENU.sort().forEach(m => {
-            let opt = document.createElement('option');
-            opt.value = m; opt.innerText = m;
-            itemSel.appendChild(opt);
-        });
-    }
+        async function saveItem() {
+            const n = document.getElementById('i-name').value.trim();
+            const u = document.getElementById('i-unit').value.trim();
+            const q = parseFloat(document.getElementById('i-qty').value) || 0;
+            const ingStr = document.getElementById('i-ing').value.trim();
+            let ing = null;
 
-    // --- INVENTORY LOGIC ---
-    function loadInventory() {
-        db.collection('inventory').orderBy('name').onSnapshot(snap => {
-            let html = '';
-            const matSel = document.getElementById('recipe-mat');
-            matSel.innerHTML = ''; 
+            if(!n) return alert("Name required");
 
-            snap.forEach(doc => {
-                const d = doc.data();
-                
-                // Populate Dropdown
-                let opt = document.createElement('option');
-                opt.value = doc.id; opt.innerText = d.name;
-                matSel.appendChild(opt);
+            if(ingStr) {
+                try { ing = JSON.parse(ingStr); } 
+                catch(e) { return alert("Invalid JSON format"); }
+            }
 
-                let statusClass = 'status-ok';
-                if(d.remainingServings <= 0) statusClass = 'status-out';
-                else if(d.remainingServings < (d.servingCapacity * 0.2)) statusClass = 'status-low';
-
-                html += `
-                <tr class="${statusClass}">
-                    <td><strong>${d.name}</strong><br><small>${d.unit}</small></td>
-                    <td>${d.quantity.toFixed(2)}</td>
-                    <td>${d.remainingServings.toFixed(1)} / ${d.servingCapacity}</td>
-                    <td><button class="btn-danger" style="padding:5px;" onclick="deleteMat('${doc.id}')">Del</button></td>
-                </tr>`;
-            });
-            document.getElementById('inventory-list').innerHTML = html;
-        });
-    }
-
-    async function addMaterial() {
-        const name = document.getElementById('mat-name').value.trim();
-        const unit = document.getElementById('mat-unit').value;
-        const cap = parseFloat(document.getElementById('mat-cap').value);
-        const qty = parseFloat(document.getElementById('mat-qty').value);
-
-        if(!name || !cap || !qty) return alert("Fill all fields");
-
-        const snap = await db.collection('inventory').where('name', '==', name).limit(1).get();
-        const addedServings = qty * cap;
-
-        if(!snap.empty) {
-            const doc = snap.docs[0];
-            await doc.ref.update({
-                quantity: firebase.firestore.FieldValue.increment(qty),
-                remainingServings: firebase.firestore.FieldValue.increment(addedServings),
-                servingCapacity: cap, 
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        } else {
-            await db.collection('inventory').add({
-                name: name,
-                unit: unit,
-                quantity: qty,
-                servingCapacity: cap,
-                remainingServings: addedServings,
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        }
-        
-        document.getElementById('mat-name').value = '';
-        document.getElementById('mat-qty').value = '';
-    }
-
-    async function deleteMat(id) {
-        if(confirm("Permanently delete this material?")) {
-            await db.collection('inventory').doc(id).delete();
-        }
-    }
-
-    // --- RECIPE LOGIC ---
-    async function saveRecipe() {
-        const item = document.getElementById('recipe-item').value;
-        const matId = document.getElementById('recipe-mat').value;
-        const deduct = parseFloat(document.getElementById('recipe-deduct').value);
-
-        if(!matId) return alert("No material selected");
-
-        const snap = await db.collection('recipes').where('itemName', '==', item).get();
-        let materials = [], docRef = null;
-
-        if(!snap.empty) {
-            docRef = snap.docs[0].ref;
-            materials = snap.docs[0].data().materials || [];
+            // Check if exists to update or add
+            const snap = await db.collection('inventory').where('itemName', '==', n).limit(1).get();
+            
+            if(!snap.empty) {
+                await snap.docs[0].ref.update({ unit: u, quantity: q, ingredients: ing });
+            } else {
+                await db.collection('inventory').add({ itemName: n, unit: u, quantity: q, ingredients: ing });
+            }
+            
+            document.getElementById('i-name').value = '';
+            document.getElementById('i-unit').value = '';
+            document.getElementById('i-qty').value = '';
+            document.getElementById('i-ing').value = '';
+            loadItems();
         }
 
-        materials = materials.filter(m => m.materialId !== matId);
-        materials.push({ materialId: matId, deductionPerSale: deduct });
-
-        if(docRef) await docRef.update({ materials: materials });
-        else await db.collection('recipes').add({ itemName: item, materials: materials });
-    }
-
-    function loadRecipes() {
-        db.collection('recipes').onSnapshot(snap => {
-            let html = '<strong>Active Recipes:</strong><br>';
-            snap.forEach(doc => {
-                const d = doc.data();
-                html += `Item: <b>${d.itemName}</b> uses ${d.materials.length} material(s) <button onclick="clearRecipe('${doc.id}')" style="font-size:0.6rem; width:auto; padding:2px 5px; background:red;">X</button><br>`;
+        function loadItems() {
+            db.collection('inventory').orderBy('itemName').onSnapshot(snap => {
+                let html = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const hasRecipe = d.ingredients ? '✅' : '-';
+                    html += `<tr>
+                        <td>${d.itemName}</td>
+                        <td>${d.quantity}</td>
+                        <td>${d.unit}</td>
+                        <td>${hasRecipe}</td>
+                        <td>
+                            <button class="del" onclick="del('${doc.id}')" style="padding:5px; width:auto;">X</button>
+                            <button onclick="edit('${d.itemName}','${d.unit}',${d.quantity},'${d.ingredients?JSON.stringify(d.ingredients).replace(/"/g, '&quot;'):''}')" style="padding:5px; width:auto; background:#2980b9;">Edit</button>
+                        </td>
+                    </tr>`;
+                });
+                document.getElementById('list').innerHTML = html;
             });
-            document.getElementById('active-recipes').innerHTML = html;
-        });
-    }
+        }
 
-    async function clearRecipe(id) {
-        if(confirm("Delete this recipe?")) await db.collection('recipes').doc(id).delete();
-    }
-</script>
+        async function del(id) { if(confirm("Delete stock item?")) await db.collection('inventory').doc(id).delete(); }
+
+        window.edit = (n, u, q, i) => {
+            document.getElementById('i-name').value = n;
+            document.getElementById('i-unit').value = u;
+            document.getElementById('i-qty').value = q;
+            document.getElementById('i-ing').value = i;
+        }
+    </script>
 </body>
 </html>
