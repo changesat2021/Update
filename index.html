@@ -29,9 +29,9 @@
 
     /* Inventory Rows */
     .inv-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #eee; }
-    .inv-name { font-size: 0.85rem; font-weight: bold; flex: 2; }
-    .inv-in { width: 60px; padding: 5px; border: 1px solid #ddd; border-radius: 4px; text-align: center; margin-right: 5px; }
-    .inv-btn { background: var(--accent); color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .inv-name { font-size: 0.9rem; font-weight: bold; flex: 2; color: #333; }
+    .inv-in { width: 70px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: center; margin-right: 8px; font-size: 1rem;}
+    .inv-btn { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
     .inv-btn.saved { background: green; }
 
     /* Tables */
@@ -45,7 +45,7 @@
         body { background: white; }
         .container { max-width: 100%; padding: 0; }
         .card { border: none; }
-        .inv-row { display: none; } /* Hide input boxes on print */
+        .inv-row { display: none; }
     }
 
     .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
@@ -98,7 +98,7 @@
             <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout (-)</button>
         </div>
 
-        <div class="section-title" style="color:var(--accent); margin-top:30px;">End of Day: Items Left (Data Only)</div>
+        <div class="section-title" style="color:var(--accent); margin-top:30px; border-color:var(--accent);">End of Day: Items Left (Data Only)</div>
         <div id="inventory-container"></div>
     </div>
 
@@ -113,7 +113,7 @@
     <div class="card" style="padding:0; margin-top:20px; overflow:hidden; border:1px solid #ccc;">
         <h4 style="padding:10px; background:#eee; margin:0; font-size:0.8rem;">Inventory / Stock Count (Data Only)</h4>
         <table>
-            <thead><tr><th>Item Name</th><th>Left Amount</th><th class="no-print"></th></tr></thead>
+            <thead><tr><th>Item Name</th><th>Amount Left</th><th class="no-print"></th></tr></thead>
             <tbody id="inv-report-body"></tbody>
         </table>
     </div>
@@ -149,6 +149,7 @@
     const db = firebase.firestore(), auth = firebase.auth();
     const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
+    // --- SALES MENU ---
     const MENU = [
         { n: 'ቡና', p: 40, c: 'hot' }, { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ለውዝ', p: 50, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
         { n: 'ለስላሳ', p: 50, c: 'hot' }, { n: 'ውሃ 2 ሊትር', p: 40, c: 'hot' }, { n: 'ውሃ 1 ሊትር', p: 35, c: 'hot' }, { n: 'ውሃ ግማሽ', p: 25, c: 'hot' },
@@ -158,13 +159,21 @@
         { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
     ];
 
+    // --- INVENTORY LIST (STOCK COUNT) ---
+    const INVENTORY_ITEMS = [
+        "ውሃ 1 ሊትር", "ውሃ ግማሽ", "ውሃ 2 ሊትር", "ለስላሳ",
+        "ቡና በኪሎ", "ሽንኩርት", "ፓስታ ቁጥር", "ነጭ ሽንኩርት ኪሎ",
+        "ካሮት ኪሎ", "ቲማቲም ኪሎ", "ጥቅል ጎመን", "ጎመን",
+        "ድንች ኪሎ", "መኮረኒ ኪሎ", "ምስር ኪሎ", "ሩዝ ኪሎ", "ድፍን ምስር ኪሎ"
+    ];
+
     let sel = null, isAdmin = false;
 
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('work-date').onchange = sync;
         renderMenu();
-        renderInventoryInputs(); // Generate the inventory rows
+        renderInventoryInputs();
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
@@ -183,32 +192,29 @@
         });
     }
 
-    // --- NEW: Generate Inventory Input Rows ---
+    // --- RENDER INVENTORY LIST ---
     function renderInventoryInputs() {
         const container = document.getElementById('inventory-container');
-        MENU.forEach((i, idx) => {
-            // We create a row for every item. 
-            // If you want to exclude certain items (like meals), add an if statement here.
+        INVENTORY_ITEMS.forEach((name, idx) => {
             const row = document.createElement('div');
             row.className = 'inv-row';
             row.innerHTML = `
-                <span class="inv-name">${i.n}</span>
+                <span class="inv-name">${name}</span>
                 <input type="number" id="inv-in-${idx}" class="inv-in" placeholder="#">
-                <button class="inv-btn" id="inv-btn-${idx}" onclick="saveInventory('${i.n}', 'inv-in-${idx}', 'inv-btn-${idx}')">Save</button>
+                <button class="inv-btn" id="inv-btn-${idx}" onclick="saveInventory('${name}', 'inv-in-${idx}', 'inv-btn-${idx}')">Save</button>
             `;
             container.appendChild(row);
         });
     }
 
-    // --- NEW: Save Inventory Data ---
+    // --- SAVE INVENTORY ---
     async function saveInventory(itemName, inputId, btnId) {
         const qty = document.getElementById(inputId).value;
-        if(qty === '') return; // Don't save empty
+        if(qty === '') return;
         
         const btn = document.getElementById(btnId);
         btn.innerText = '...';
         
-        // Save to a NEW collection called 'inventory' so it doesn't mess with money
         await db.collection('inventory').add({
             n: itemName,
             left: qty,
@@ -216,16 +222,14 @@
             ts: Date.now()
         });
 
-        // Visual feedback
         btn.innerText = 'Saved';
         btn.classList.add('saved');
         setTimeout(() => {
             btn.innerText = 'Save';
             btn.classList.remove('saved');
-            document.getElementById(inputId).value = ''; // clear box
+            document.getElementById(inputId).value = '';
         }, 1500);
     }
-    // ------------------------------------------
 
     async function confirmSale() {
         const q = parseInt(document.getElementById('m-qty').value);
@@ -251,7 +255,7 @@
     function sync() {
         const date = document.getElementById('work-date').value;
         
-        // 1. Sync Sales & Expenses
+        // 1. Sync Sales
         db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, html='', sum = {};
             snap.forEach(doc => {
@@ -271,7 +275,7 @@
             document.getElementById('total-n').innerText = (s - e) + " ETB";
         });
 
-        // 2. Sync Inventory Data (For the Report)
+        // 2. Sync Inventory Report
         db.collection('inventory').where('d', '==', date).orderBy('ts', 'desc').onSnapshot(snap => {
             let html = '';
             snap.forEach(doc => {
@@ -295,11 +299,9 @@
         const date = document.getElementById('work-date').value;
         const batch = db.batch();
         
-        // Clear transactions
         const tSnap = await db.collection('transactions').where('d', '==', date).get();
         tSnap.forEach(d => batch.delete(d.ref));
         
-        // Clear inventory logs
         const iSnap = await db.collection('inventory').where('d', '==', date).get();
         iSnap.forEach(d => batch.delete(d.ref));
 
