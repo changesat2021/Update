@@ -149,7 +149,6 @@
     const db = firebase.firestore(), auth = firebase.auth();
     const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
-    // --- SALES MENU ---
     const MENU = [
         { n: 'ቡና', p: 40, c: 'hot' }, { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ለውዝ', p: 50, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
         { n: 'ለስላሳ', p: 50, c: 'hot' }, { n: 'ውሃ 2 ሊትር', p: 40, c: 'hot' }, { n: 'ውሃ 1 ሊትር', p: 35, c: 'hot' }, { n: 'ውሃ ግማሽ', p: 25, c: 'hot' },
@@ -159,7 +158,6 @@
         { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
     ];
 
-    // --- INVENTORY LIST (STOCK COUNT) ---
     const INVENTORY_ITEMS = [
         "ውሃ 1 ሊትር", "ውሃ ግማሽ", "ውሃ 2 ሊትር", "ለስላሳ",
         "ቡና በኪሎ", "ሽንኩርት", "ፓስታ ቁጥር", "ነጭ ሽንኩርት ኪሎ",
@@ -192,7 +190,6 @@
         });
     }
 
-    // --- RENDER INVENTORY LIST ---
     function renderInventoryInputs() {
         const container = document.getElementById('inventory-container');
         INVENTORY_ITEMS.forEach((name, idx) => {
@@ -207,7 +204,7 @@
         });
     }
 
-    // --- SAVE INVENTORY ---
+    // --- FIX: Added Error Handling ---
     async function saveInventory(itemName, inputId, btnId) {
         const qty = document.getElementById(inputId).value;
         if(qty === '') return;
@@ -215,20 +212,26 @@
         const btn = document.getElementById(btnId);
         btn.innerText = '...';
         
-        await db.collection('inventory').add({
-            n: itemName,
-            left: qty,
-            d: document.getElementById('work-date').value,
-            ts: Date.now()
-        });
+        try {
+            await db.collection('inventory').add({
+                n: itemName,
+                left: qty,
+                d: document.getElementById('work-date').value,
+                ts: Date.now()
+            });
 
-        btn.innerText = 'Saved';
-        btn.classList.add('saved');
-        setTimeout(() => {
-            btn.innerText = 'Save';
-            btn.classList.remove('saved');
-            document.getElementById(inputId).value = '';
-        }, 1500);
+            btn.innerText = 'Saved';
+            btn.classList.add('saved');
+            setTimeout(() => {
+                btn.innerText = 'Save';
+                btn.classList.remove('saved');
+                document.getElementById(inputId).value = '';
+            }, 1500);
+        } catch (error) {
+            console.error(error);
+            alert("Error saving: " + error.message + "\nCheck internet or admin rules.");
+            btn.innerText = 'Retry';
+        }
     }
 
     async function confirmSale() {
@@ -275,13 +278,20 @@
             document.getElementById('total-n').innerText = (s - e) + " ETB";
         });
 
-        // 2. Sync Inventory Report
-        db.collection('inventory').where('d', '==', date).orderBy('ts', 'desc').onSnapshot(snap => {
-            let html = '';
+        // 2. Sync Inventory Report (FIXED: Sorting done in JS to avoid Index Error)
+        db.collection('inventory').where('d', '==', date).onSnapshot(snap => {
+            let list = [];
             snap.forEach(doc => {
-                const i = doc.data();
-                html += `<tr><td>${i.n}</td><td>${i.left}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${doc.id}', 'inventory')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
+                list.push({ ...doc.data(), id: doc.id });
             });
+            // Sort Descending by Time (Newest First)
+            list.sort((a, b) => b.ts - a.ts);
+
+            let html = '';
+            list.forEach(i => {
+                html += `<tr><td>${i.n}</td><td>${i.left}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${i.id}', 'inventory')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
+            });
+            
             if(html === '') html = '<tr><td colspan="3" style="color:#aaa; text-align:center;">No data recorded today</td></tr>';
             document.getElementById('inv-report-body').innerHTML = html;
         });
