@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Bean & Bloom POS - Final</title>
+<title>Food Plate Calculator</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -15,25 +15,17 @@
     
     /* UI Components */
     header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
     .val { font-size: 1.1rem; font-weight: 800; display: block; }
     .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
     
     /* Menu */
-    .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
-    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
-    .food-btn { border-left-color: var(--food); }
-    .add-btn { border-left-color: #7f8c8d; }
-
-    /* Inventory Rows */
-    .inv-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #eee; }
-    .inv-name { font-size: 0.9rem; font-weight: bold; flex: 2; color: #333; }
-    .inv-in { width: 70px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: center; margin-right: 8px; font-size: 1rem;}
-    .inv-btn { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-    .inv-btn.saved { background: green; }
-
+    .section-title { font-size: 0.9rem; font-weight: bold; margin: 20px 0 10px; color: var(--primary); border-bottom: 2px solid #ddd; padding-bottom: 5px; text-transform: uppercase; }
+    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 15px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 5px solid var(--food); box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: transform 0.1s; }
+    .menu-btn:active { transform: scale(0.98); background: #fafafa; }
+    
     /* Tables */
     table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
     th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
@@ -45,7 +37,6 @@
         body { background: white; }
         .container { max-width: 100%; padding: 0; }
         .card { border: none; }
-        .inv-row { display: none; }
     }
 
     .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
@@ -56,65 +47,35 @@
 <body>
 <div class="container">
     <div class="print-only" style="text-align:center;">
-        <h1 style="margin:0;">BEAN & BLOOM COFFEEHOUSE</h1>
+        <h1 style="margin:0;">FOOD PLATE REPORT</h1>
         <p id="pdf-date" style="font-weight:bold;"></p>
         <hr>
-        <h3>DAILY SALES SUMMARY</h3>
+        <h3>DAILY SUMMARY</h3>
     </div>
 
     <header class="no-print">
-        <h2 style="color:var(--primary)">☕ Bean & Bloom</h2>
+        <h2 style="color:var(--primary)">🍽️ Food Calculator</h2>
         <input type="date" id="work-date">
     </header>
 
     <div class="dashboard">
-        <div class="card"><span class="lbl">Sales + Inc</span><span class="val" id="total-s" style="color:green">0</span></div>
-        <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
-        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
+        <div class="card"><span class="lbl">Total Food Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
+        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Total Plates Sold</span><span class="val" id="total-count">0</span></div>
     </div>
 
     <div class="no-print">
-        <div class="section-title">Hot & Cold Drinks</div><div id="grid-hot" class="menu-grid"></div>
-        <div class="section-title">Special Juices</div><div id="grid-juices" class="menu-grid"></div>
-        <div class="section-title">Fasting Food</div><div id="grid-fasting" class="menu-grid"></div>
-        <div class="section-title">Non-Fasting Food</div><div id="grid-nonfast" class="menu-grid"></div>
-        <div class="section-title">Additives & Snacks</div><div id="grid-add" class="menu-grid"></div>
-
-        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed green;">
-            <p style="font-weight:bold; color:green; font-size:0.7rem; margin-bottom:5px;">ADD EXTRA REVENUE/INCOME</p>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="rev-name" placeholder="Source/Reason..." style="flex:2; padding:8px;">
-                <input type="number" id="rev-amt" placeholder="Amount" style="flex:1; padding:8px;">
-            </div>
-            <button onclick="saveRev()" style="width:100%; margin-top:5px; padding:10px; background:green; color:white; border:none; border-radius:5px;">Save Income (+)</button>
-        </div>
-
-        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:10px; border:1px dashed red;">
-            <p style="font-weight:bold; color:red; font-size:0.7rem; margin-bottom:5px;">ADD EXPENSE/PAYOUT</p>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="ex-name" placeholder="Reason..." style="flex:2; padding:8px;">
-                <input type="number" id="ex-amt" placeholder="Amount" style="flex:1; padding:8px;">
-            </div>
-            <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout (-)</button>
-        </div>
-
-        <div class="section-title" style="color:var(--accent); margin-top:30px; border-color:var(--accent);">End of Day: Items Left (Data Only)</div>
-        <div id="inventory-container"></div>
+        <div class="section-title">Fasting Food (የጾም)</div>
+        <div id="grid-fasting" class="menu-grid"></div>
+        
+        <div class="section-title">Non-Fasting Food (የፍስክ)</div>
+        <div id="grid-nonfast" class="menu-grid"></div>
     </div>
 
     <div class="card" style="padding:0; margin-top:20px; overflow:hidden;">
-        <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Itemized Sales Report</h4>
+        <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Sold Out Plates Report</h4>
         <table>
-            <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
+            <thead><tr><th>Food Description</th><th>Plates Sold</th><th>Total Value</th><th class="no-print"></th></tr></thead>
             <tbody id="log-body"></tbody>
-        </table>
-    </div>
-
-    <div class="card" style="padding:0; margin-top:20px; overflow:hidden; border:1px solid #ccc;">
-        <h4 style="padding:10px; background:#eee; margin:0; font-size:0.8rem;">Inventory / Stock Count (Data Only)</h4>
-        <table>
-            <thead><tr><th>Item Name</th><th>Amount Left</th><th class="no-print"></th></tr></thead>
-            <tbody id="inv-report-body"></tbody>
         </table>
     </div>
 
@@ -125,17 +86,19 @@
 </div>
 
 <div id="qty-modal" class="modal">
-    <div class="modal-content" style="background:white; padding:20px; border-radius:15px; text-align:center;">
-        <h3 id="m-item">Item</h3>
-        <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100px; text-align:center; margin:15px;">
-        <div style="display:flex; gap:10px;">
-            <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
-            <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Add</button>
+    <div class="modal-content" style="background:white; padding:20px; border-radius:15px; text-align:center; width: 80%; max-width: 300px;">
+        <h3 id="m-item" style="color:var(--primary)">Item</h3>
+        <p style="font-size:0.8rem; color:#666;">Enter Amount Sold Out:</p>
+        <input type="number" id="m-qty" value="" placeholder="#" style="font-size:2rem; width:100px; text-align:center; margin:10px; padding: 5px; border: 2px solid var(--food); border-radius: 5px;">
+        <div style="display:flex; gap:10px; margin-top: 15px;">
+            <button onclick="closeModal()" style="flex:1; padding:12px; border-radius:5px; border:1px solid #ccc; background:white;">Cancel</button>
+            <button onclick="confirmSale()" style="flex:1; padding:12px; background:var(--food); color:white; border:none; border-radius:5px; font-weight:bold;">ADD</button>
         </div>
     </div>
 </div>
 
 <script>
+    // Configuration
     const firebaseConfig = {
         apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
         authDomain: "bean-5a113.firebaseapp.com",
@@ -149,20 +112,42 @@
     const db = firebase.firestore(), auth = firebase.auth();
     const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
+    // ONLY Fasting and Non-Fasting Foods
     const MENU = [
-        { n: 'ቡና', p: 40, c: 'hot' }, { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ለውዝ', p: 50, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
-        { n: 'ለስላሳ', p: 50, c: 'hot' }, { n: 'ውሃ 2 ሊትር', p: 40, c: 'hot' }, { n: 'ውሃ 1 ሊትር', p: 35, c: 'hot' }, { n: 'ውሃ ግማሽ', p: 25, c: 'hot' },
-        { n: 'አቮካዶ ጁስ', p: 120, c: 'juices' }, { n: 'ማንጎ ጁስ', p: 120, c: 'juices' }, { n: 'ፓፓያ ጁስ', p: 120, c: 'juices' }, { n: 'ሙዝ ጁስ', p: 120, c: 'juices' }, { n: 'አናናስ', p: 120, c: 'juices' }, { n: 'ተልባ ጁስ', p: 120, c: 'juices' }, { n: 'በሶ ጁስ', p: 120, c: 'juices' }, { n: 'ወተት በአቮካዶ', p: 200, c: 'juices' }, { n: 'ስፔሻል ጁስ', p: 250, c: 'juices' },
-        { n: 'ፓስታ በስጎ', p: 130, c: 'fasting' }, { n: 'ሽሮ', p: 120, c: 'fasting' }, { n: 'ተጋቢኖ', p: 130, c: 'fasting' }, { n: 'ሽሮ በሰላጣ', p: 180, c: 'fasting' }, { n: 'ፍርፍር', p: 100, c: 'fasting' }, { n: 'ሃፍ ሃፍ', p: 150, c: 'fasting' }, { n: 'ፉል ኖርማል', p: 90, c: 'fasting' }, { n: 'ፉል በአቮካዶ', p: 90, c: 'fasting' }, { n: 'ፉል በእንቁላል', p: 120, c: 'fasting' }, { n: 'ቲማቲም ለብለብ', p: 100, c: 'fasting' }, { n: 'በያይነት', p: 140, c: 'fasting' }, { n: 'ፎሶሊያ', p: 160, c: 'fasting' }, { n: 'አዚፋ', p: 160, c: 'fasting' }, { n: 'ቺፕስ 25', p: 25, c: 'fasting' }, { n: 'ቺፕስ 35', p: 35, c: 'fasting' }, { n: 'ቺፕስ 80', p: 80, c: 'fasting' }, { n: 'እርጥብ', p: 90, c: 'fasting' }, { n: 'እርጥብ ስፔሻል', p: 120, c: 'fasting' }, { n: 'ፓስታ በአትክልት', p: 140, c: 'fasting' }, { n: 'ሩዝ በአትክልት', p: 140, c: 'fasting' },
-        { n: 'ጥብስ', p: 270, c: 'nonfast' }, { n: 'ስጋ ፍርፍር', p: 250, c: 'nonfast' }, { n: 'ፓስታ በስጋ', p: 250, c: 'nonfast' }, { n: 'ፓስታ በ እንቁላል', p: 200, c: 'nonfast' }, { n: 'እንቁላል ሳንድዊች', p: 120, c: 'nonfast' }, { n: 'ጥብስ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'እንቁላል በስጋ', p: 250, c: 'nonfast' }, { n: 'እንቁላል ፍርፍር', p: 140, c: 'nonfast' }, { n: 'ቋንጣ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'ፉል በቅቤ', p: 140, c: 'nonfast' }, { n: 'ሽሮ በቅቤ', p: 180, c: 'nonfast' },
-        { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
-    ];
-
-    const INVENTORY_ITEMS = [
-        "ውሃ 1 ሊትር", "ውሃ ግማሽ", "ውሃ 2 ሊትር", "ለስላሳ", "እንጀራ", "ዳቦ",
-        "ቡና በኪሎ", "ሽንኩርት", "ፓስታ ቁጥር", "ነጭ ሽንኩርት ኪሎ",
-        "ካሮት ኪሎ", "ቲማቲም ኪሎ", "ጥቅል ጎመን", "ጎመን",
-        "ድንች ኪሎ", "መኮረኒ ኪሎ", "ምስር ኪሎ", "ሩዝ ኪሎ", "ድፍን ምስር ኪሎ"
+        // Fasting
+        { n: 'ፓስታ በስጎ', p: 130, c: 'fasting' }, 
+        { n: 'ሽሮ', p: 120, c: 'fasting' }, 
+        { n: 'ተጋቢኖ', p: 130, c: 'fasting' }, 
+        { n: 'ሽሮ በሰላጣ', p: 180, c: 'fasting' }, 
+        { n: 'ፍርፍር', p: 100, c: 'fasting' }, 
+        { n: 'ሃፍ ሃፍ', p: 150, c: 'fasting' }, 
+        { n: 'ፉል ኖርማል', p: 90, c: 'fasting' }, 
+        { n: 'ፉል በአቮካዶ', p: 90, c: 'fasting' }, 
+        { n: 'ፉል በእንቁላል', p: 120, c: 'fasting' }, 
+        { n: 'ቲማቲም ለብለብ', p: 100, c: 'fasting' }, 
+        { n: 'በያይነት', p: 140, c: 'fasting' }, 
+        { n: 'ፎሶሊያ', p: 160, c: 'fasting' }, 
+        { n: 'አዚፋ', p: 160, c: 'fasting' }, 
+        { n: 'ቺፕስ 25', p: 25, c: 'fasting' }, 
+        { n: 'ቺፕስ 35', p: 35, c: 'fasting' }, 
+        { n: 'ቺፕስ 80', p: 80, c: 'fasting' }, 
+        { n: 'እርጥብ', p: 90, c: 'fasting' }, 
+        { n: 'እርጥብ ስፔሻል', p: 120, c: 'fasting' }, 
+        { n: 'ፓስታ በአትክልት', p: 140, c: 'fasting' }, 
+        { n: 'ሩዝ በአትክልት', p: 140, c: 'fasting' },
+        
+        // Non-Fasting
+        { n: 'ጥብስ', p: 270, c: 'nonfast' }, 
+        { n: 'ስጋ ፍርፍር', p: 250, c: 'nonfast' }, 
+        { n: 'ፓስታ በስጋ', p: 250, c: 'nonfast' }, 
+        { n: 'ፓስታ በ እንቁላል', p: 200, c: 'nonfast' }, 
+        { n: 'እንቁላል ሳንድዊች', p: 120, c: 'nonfast' }, 
+        { n: 'ጥብስ ፍርፍር', p: 300, c: 'nonfast' }, 
+        { n: 'እንቁላል በስጋ', p: 250, c: 'nonfast' }, 
+        { n: 'እንቁላል ፍርፍር', p: 140, c: 'nonfast' }, 
+        { n: 'ቋንጣ ፍርፍር', p: 300, c: 'nonfast' }, 
+        { n: 'ፉል በቅቤ', p: 140, c: 'nonfast' }, 
+        { n: 'ሽሮ በቅቤ', p: 180, c: 'nonfast' }
     ];
 
     let sel = null, isAdmin = false;
@@ -171,7 +156,6 @@
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('work-date').onchange = sync;
         renderMenu();
-        renderInventoryInputs();
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
@@ -183,117 +167,65 @@
     function renderMenu() {
         MENU.forEach(i => {
             const btn = document.createElement('div');
-            btn.className = `menu-btn ${['fasting','nonfast'].includes(i.c) ? 'food-btn' : (i.c=='add'?'add-btn':'')}`;
+            btn.className = 'menu-btn';
             btn.innerHTML = `<strong>${i.n}</strong><br><small>${i.p} ETB</small>`;
-            btn.onclick = () => { sel = i; document.getElementById('m-item').innerText = i.n; document.getElementById('qty-modal').style.display='flex'; };
+            btn.onclick = () => { 
+                sel = i; 
+                document.getElementById('m-item').innerText = i.n; 
+                document.getElementById('m-qty').value = ''; // Reset to empty to force entry
+                document.getElementById('qty-modal').style.display='flex'; 
+                document.getElementById('m-qty').focus();
+            };
             document.getElementById('grid-' + i.c).appendChild(btn);
         });
     }
 
-    function renderInventoryInputs() {
-        const container = document.getElementById('inventory-container');
-        INVENTORY_ITEMS.forEach((name, idx) => {
-            const row = document.createElement('div');
-            row.className = 'inv-row';
-            row.innerHTML = `
-                <span class="inv-name">${name}</span>
-                <input type="number" id="inv-in-${idx}" class="inv-in" placeholder="#">
-                <button class="inv-btn" id="inv-btn-${idx}" onclick="saveInventory('${name}', 'inv-in-${idx}', 'inv-btn-${idx}')">Save</button>
-            `;
-            container.appendChild(row);
-        });
-    }
-
-    // --- FIX: Added Error Handling ---
-    async function saveInventory(itemName, inputId, btnId) {
-        const qty = document.getElementById(inputId).value;
-        if(qty === '') return;
-        
-        const btn = document.getElementById(btnId);
-        btn.innerText = '...';
-        
-        try {
-            await db.collection('inventory').add({
-                n: itemName,
-                left: qty,
-                d: document.getElementById('work-date').value,
-                ts: Date.now()
-            });
-
-            btn.innerText = 'Saved';
-            btn.classList.add('saved');
-            setTimeout(() => {
-                btn.innerText = 'Save';
-                btn.classList.remove('saved');
-                document.getElementById(inputId).value = '';
-            }, 1500);
-        } catch (error) {
-            console.error(error);
-            alert("Error saving: " + error.message + "\nCheck internet or admin rules.");
-            btn.innerText = 'Retry';
-        }
-    }
-
+    // Logic: Food Plate Calculator (Transaction)
     async function confirmSale() {
-        const q = parseInt(document.getElementById('m-qty').value);
-        if(!q) return;
-        await db.collection('transactions').add({ n: sel.n, q: q, p: sel.p * q, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
+        const val = document.getElementById('m-qty').value;
+        const q = parseInt(val);
+        if(!q || q <= 0) { alert("Please enter the number of plates sold."); return; }
+        
+        await db.collection('transactions').add({ 
+            n: sel.n, 
+            q: q, 
+            p: sel.p * q, 
+            d: document.getElementById('work-date').value, 
+            ex: false, 
+            ts: Date.now() 
+        });
         closeModal();
-    }
-
-    async function saveEx() {
-        const n = document.getElementById('ex-name').value, p = parseFloat(document.getElementById('ex-amt').value);
-        if(!n || !p) return;
-        await db.collection('transactions').add({ n: "OUT: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: true, ts: Date.now() });
-        document.getElementById('ex-name').value = ''; document.getElementById('ex-amt').value = '';
-    }
-
-    async function saveRev() {
-        const n = document.getElementById('rev-name').value, p = parseFloat(document.getElementById('rev-amt').value);
-        if(!n || !p) return;
-        await db.collection('transactions').add({ n: "IN: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
-        document.getElementById('rev-name').value = ''; document.getElementById('rev-amt').value = '';
     }
 
     function sync() {
         const date = document.getElementById('work-date').value;
         
-        // 1. Sync Sales
         db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
-            let s=0, e=0, html='', sum = {};
+            let s=0, count=0, html='', sum = {};
+            
             snap.forEach(doc => {
                 const t = doc.data();
-                if(t.ex) e += t.p; else s += t.p;
-                if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
-                sum[t.n].q += t.q; sum[t.n].p += t.p;
+                if(t.ex) return; // Skip expenses if any old data exists
+                s += t.p;
+                count += t.q;
+                if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, id: doc.id };
+                sum[t.n].q += t.q; 
+                sum[t.n].p += t.p;
             });
+
             for (let name in sum) {
                 const item = sum[name];
-                const color = item.isEx ? 'red' : (name.startsWith('IN:') ? 'green' : 'black');
-                html += `<tr><td style="color:${color}; font-weight:${name.startsWith('IN:')?'bold':'normal'}">${name}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}', 'transactions')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
+                html += `<tr>
+                    <td style="font-weight:bold">${name}</td>
+                    <td style="font-size:1.1em">${item.q}</td>
+                    <td>${item.p}</td>
+                    <td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}', 'transactions')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td>
+                </tr>`;
             }
-            document.getElementById('log-body').innerHTML = html;
-            document.getElementById('total-s').innerText = s;
-            document.getElementById('total-e').innerText = e;
-            document.getElementById('total-n').innerText = (s - e) + " ETB";
-        });
-
-        // 2. Sync Inventory Report (FIXED: Sorting done in JS to avoid Index Error)
-        db.collection('inventory').where('d', '==', date).onSnapshot(snap => {
-            let list = [];
-            snap.forEach(doc => {
-                list.push({ ...doc.data(), id: doc.id });
-            });
-            // Sort Descending by Time (Newest First)
-            list.sort((a, b) => b.ts - a.ts);
-
-            let html = '';
-            list.forEach(i => {
-                html += `<tr><td>${i.n}</td><td>${i.left}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${i.id}', 'inventory')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
-            });
             
-            if(html === '') html = '<tr><td colspan="3" style="color:#aaa; text-align:center;">No data recorded today</td></tr>';
-            document.getElementById('inv-report-body').innerHTML = html;
+            document.getElementById('log-body').innerHTML = html;
+            document.getElementById('total-s').innerText = s + " ETB";
+            document.getElementById('total-count').innerText = count;
         });
     }
 
@@ -308,13 +240,8 @@
     async function clearDay() {
         const date = document.getElementById('work-date').value;
         const batch = db.batch();
-        
         const tSnap = await db.collection('transactions').where('d', '==', date).get();
         tSnap.forEach(d => batch.delete(d.ref));
-        
-        const iSnap = await db.collection('inventory').where('d', '==', date).get();
-        iSnap.forEach(d => batch.delete(d.ref));
-
         await batch.commit();
         alert("System Brushed. Ready for next day.");
     }
@@ -329,7 +256,7 @@
         }
     }
 
-    function closeModal() { document.getElementById('qty-modal').style.display='none'; document.getElementById('m-qty').value = 1; }
+    function closeModal() { document.getElementById('qty-modal').style.display='none'; }
 </script>
 </body>
 </html>
