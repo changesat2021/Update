@@ -16,17 +16,54 @@
     /* UI Components */
     header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     
-    /* MODIFIED: Changed to 2 columns to fit 4 items neatly */
     .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     
     .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
     .val { font-size: 1.1rem; font-weight: 800; display: block; }
     .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
     
-    /* Menu */
-    .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
-    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
+    /* DROPDOWN SECTION STYLES */
+    .section-btn { 
+        width: 100%;
+        background: white;
+        border: 1px solid #ddd;
+        padding: 15px;
+        text-align: left;
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: var(--primary);
+        border-radius: var(--radius);
+        margin-top: 10px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    /* Arrow Indicator Logic */
+    .section-btn::after { content: '+'; font-size: 1.2rem; font-weight: bold; color: #999; }
+    .section-btn.active { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; background: #fafafa; }
+    .section-btn.active::after { content: '-'; color: var(--primary); }
+
+    .menu-grid { 
+        display: none; /* Hidden by default */
+        grid-template-columns: 1fr 1fr; 
+        gap: 8px; 
+        background: white;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-bottom-left-radius: var(--radius);
+        border-bottom-right-radius: var(--radius);
+        margin-bottom: 10px;
+    }
+    
+    /* Class to show grid when toggled */
+    .menu-grid.show { display: grid; }
+
+    .menu-btn { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
+    .menu-btn:active { background: #eee; }
     .food-btn { border-left-color: var(--food); }
     .add-btn { border-left-color: #7f8c8d; }
 
@@ -78,11 +115,20 @@
     </div>
 
     <div class="no-print">
-        <div class="section-title">Hot & Cold Drinks</div><div id="grid-hot" class="menu-grid"></div>
-        <div class="section-title">Special Juices</div><div id="grid-juices" class="menu-grid"></div>
-        <div class="section-title">Fasting Food</div><div id="grid-fasting" class="menu-grid"></div>
-        <div class="section-title">Non-Fasting Food</div><div id="grid-nonfast" class="menu-grid"></div>
-        <div class="section-title">Additives & Snacks</div><div id="grid-add" class="menu-grid"></div>
+        <button class="section-btn" onclick="toggleGrid('grid-hot', this)">Hot & Cold Drinks</button>
+        <div id="grid-hot" class="menu-grid"></div>
+
+        <button class="section-btn" onclick="toggleGrid('grid-juices', this)">Special Juices</button>
+        <div id="grid-juices" class="menu-grid"></div>
+
+        <button class="section-btn" onclick="toggleGrid('grid-fasting', this)" style="color:var(--food)">Fasting Food (የጾም)</button>
+        <div id="grid-fasting" class="menu-grid"></div>
+
+        <button class="section-btn" onclick="toggleGrid('grid-nonfast', this)" style="color:var(--food)">Non-Fasting Food (የፍስክ)</button>
+        <div id="grid-nonfast" class="menu-grid"></div>
+
+        <button class="section-btn" onclick="toggleGrid('grid-add', this)">Additives & Snacks</button>
+        <div id="grid-add" class="menu-grid"></div>
 
         <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed green;">
             <p style="font-weight:bold; color:green; font-size:0.7rem; margin-bottom:5px;">ADD EXTRA REVENUE/INCOME</p>
@@ -102,8 +148,8 @@
             <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout (-)</button>
         </div>
 
-        <div class="section-title" style="color:var(--accent); margin-top:30px; border-color:var(--accent);">End of Day: Items Left (Data Only)</div>
-        <div id="inventory-container"></div>
+        <button class="section-btn" onclick="toggleGrid('inventory-container', this)" style="color:var(--accent); border-color:var(--accent);">End of Day: Items Left</button>
+        <div id="inventory-container" class="menu-grid" style="display:none; grid-template-columns:1fr; padding:0; border:none;"></div>
     </div>
 
     <div class="card" style="padding:0; margin-top:20px; overflow:hidden;">
@@ -162,7 +208,6 @@
         { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
     ];
 
-    // Helper: Create a Set of all names that constitute "Food" (Fasting + Non-Fasting)
     const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
 
     const INVENTORY_ITEMS = [
@@ -186,6 +231,27 @@
             sync();
         });
     };
+
+    // --- NEW TOGGLE FUNCTION ---
+    function toggleGrid(id, btn) {
+        const grid = document.getElementById(id);
+        if(grid.classList.contains('show')) {
+            grid.classList.remove('show');
+            if(id === 'inventory-container') grid.style.display = 'none'; // Special handling for inventory layout
+            btn.classList.remove('active');
+        } else {
+            // Close all others first (Accordion style - optional, remove this block if you want multiple open at once)
+            document.querySelectorAll('.menu-grid.show').forEach(g => {
+                g.classList.remove('show');
+                if(g.id === 'inventory-container') g.style.display = 'none';
+            });
+            document.querySelectorAll('.section-btn.active').forEach(b => b.classList.remove('active'));
+
+            grid.classList.add('show');
+            if(id === 'inventory-container') grid.style.display = 'block'; // Inventory is list, not grid
+            btn.classList.add('active');
+        }
+    }
 
     function renderMenu() {
         MENU.forEach(i => {
@@ -251,7 +317,6 @@
     function sync() {
         const date = document.getElementById('work-date').value;
         
-        // Sync Sales & Expenses & Calculate Food Plates
         db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, foodPlates=0, html='', sum = {};
             
@@ -259,11 +324,9 @@
                 const t = doc.data();
                 if(t.ex) e += t.p; else s += t.p;
                 
-                // --- LOGIC ADDED: CHECK IF ITEM IS FOOD, THEN ADD QUANTITY ---
                 if (!t.ex && FOOD_SET.has(t.n)) {
                     foodPlates += t.q;
                 }
-                // -------------------------------------------------------------
 
                 if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
                 sum[t.n].q += t.q; sum[t.n].p += t.p;
@@ -278,12 +341,9 @@
             document.getElementById('total-s').innerText = s;
             document.getElementById('total-e').innerText = e;
             document.getElementById('total-n').innerText = (s - e) + " ETB";
-            
-            // Update the new Food Plates Counter
             document.getElementById('total-plates').innerText = foodPlates;
         });
 
-        // Sync Inventory
         db.collection('inventory').where('d', '==', date).onSnapshot(snap => {
             let list = [];
             snap.forEach(doc => list.push({ ...doc.data(), id: doc.id }));
