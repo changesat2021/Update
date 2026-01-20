@@ -9,7 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
 <style>
-    :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; }
+    :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --gold: #d4ac0d; --white: #fff; --radius: 10px; }
     body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
     .container { max-width: 650px; margin: 0 auto; padding: 15px; }
     
@@ -18,10 +18,12 @@
     
     .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     
-    .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
+    /* Dashboard Cards */
+    .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; position: relative; }
     .val { font-size: 1.1rem; font-weight: 800; display: block; }
-    .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
-    
+    .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; margin-bottom: 2px; display: block; }
+    .sub-lbl { font-size: 0.6rem; color: #bbb; display: block; margin-top: 3px; }
+
     /* DROPDOWN SECTION STYLES */
     .section-btn { 
         width: 100%;
@@ -41,13 +43,12 @@
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     
-    /* Arrow Indicator Logic */
     .section-btn::after { content: '+'; font-size: 1.2rem; font-weight: bold; color: #999; }
     .section-btn.active { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; background: #fafafa; }
     .section-btn.active::after { content: '-'; color: var(--primary); }
 
     .menu-grid { 
-        display: none; /* Hidden by default */
+        display: none; 
         grid-template-columns: 1fr 1fr; 
         gap: 8px; 
         background: white;
@@ -58,8 +59,6 @@
         border-bottom-right-radius: var(--radius);
         margin-bottom: 10px;
     }
-    
-    /* Class to show grid when toggled */
     .menu-grid.show { display: grid; }
 
     .menu-btn { background: #f9f9f9; border: 1px solid #eee; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
@@ -79,6 +78,13 @@
     th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
     .print-only { display: none; }
 
+    /* Admin Nav */
+    .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; z-index: 99; }
+    .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    
+    /* Modal */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
+
     @media print {
         .no-print { display: none !important; }
         .print-only { display: block !important; }
@@ -86,11 +92,8 @@
         .container { max-width: 100%; padding: 0; }
         .card { border: none; }
         .inv-row { display: none; }
+        /* When printing, hide the dashboard except totals if needed, or hide distinct elements */
     }
-
-    .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
-    .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
-    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
 </style>
 </head>
 <body>
@@ -109,9 +112,16 @@
 
     <div class="dashboard">
         <div class="card"><span class="lbl">Sales + Inc</span><span class="val" id="total-s" style="color:green">0</span></div>
+        
         <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
+        
         <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
-        <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Food Plates Sold</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
+        
+        <div class="card" style="border:1px solid var(--gold);">
+            <span class="lbl" style="color:var(--gold)">Staff Incentive</span>
+            <span class="val" id="total-inc" style="color:var(--gold)">0</span>
+            <span class="sub-lbl" id="inc-breakdown">0 F / 0 B</span>
+        </div>
     </div>
 
     <div class="no-print">
@@ -158,6 +168,13 @@
             <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
             <tbody id="log-body"></tbody>
         </table>
+        <div class="print-only" style="padding:15px; text-align:right;">
+            <p><strong>Total Sales:</strong> <span id="p-sales">0</span></p>
+            <p><strong>Total Expenses:</strong> <span id="p-exp">0</span></p>
+            <p><strong>Net Cash:</strong> <span id="p-net">0</span></p>
+            <hr>
+            <p><strong>Incentive Pay:</strong> <span id="p-inc">0</span></p>
+        </div>
     </div>
 
     <div class="card" style="padding:0; margin-top:20px; overflow:hidden; border:1px solid #ccc;">
@@ -199,8 +216,10 @@
     const db = firebase.firestore(), auth = firebase.auth();
     const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
+    // --- MENU DATA ---
     const MENU = [
-        { n: 'ቡና', p: 40, c: 'hot' }, { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ለውዝ', p: 50, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
+        { n: 'ቡና', p: 40, c: 'hot' }, // KEY ITEM for Incentive
+        { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ለውዝ', p: 50, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
         { n: 'ለስላሳ', p: 50, c: 'hot' }, { n: 'ውሃ 2 ሊትር', p: 40, c: 'hot' }, { n: 'ውሃ 1 ሊትር', p: 35, c: 'hot' }, { n: 'ውሃ ግማሽ', p: 25, c: 'hot' },
         { n: 'አቮካዶ ጁስ', p: 120, c: 'juices' }, { n: 'ማንጎ ጁስ', p: 120, c: 'juices' }, { n: 'ፓፓያ ጁስ', p: 120, c: 'juices' }, { n: 'ሙዝ ጁስ', p: 120, c: 'juices' }, { n: 'አናናስ', p: 120, c: 'juices' }, { n: 'ተልባ ጁስ', p: 120, c: 'juices' }, { n: 'በሶ ጁስ', p: 120, c: 'juices' }, { n: 'ወተት በአቮካዶ', p: 200, c: 'juices' }, { n: 'ስፔሻል ጁስ', p: 250, c: 'juices' },
         { n: 'ፓስታ በስጎ', p: 130, c: 'fasting' }, { n: 'ሽሮ', p: 120, c: 'fasting' }, { n: 'ተጋቢኖ', p: 130, c: 'fasting' }, { n: 'ሽሮ በሰላጣ', p: 180, c: 'fasting' }, { n: 'ፍርፍር', p: 100, c: 'fasting' }, { n: 'ሃፍ ሃፍ', p: 150, c: 'fasting' }, { n: 'ፉል ኖርማል', p: 90, c: 'fasting' }, { n: 'ፉል በአቮካዶ', p: 90, c: 'fasting' }, { n: 'ፉል በእንቁላል', p: 120, c: 'fasting' }, { n: 'ቲማቲም ለብለብ', p: 100, c: 'fasting' }, { n: 'በያይነት', p: 140, c: 'fasting' }, { n: 'ፎሶሊያ', p: 160, c: 'fasting' }, { n: 'አዚፋ', p: 160, c: 'fasting' }, { n: 'ቺፕስ 25', p: 25, c: 'fasting' }, { n: 'ቺፕስ 35', p: 35, c: 'fasting' }, { n: 'ቺፕስ 80', p: 80, c: 'fasting' }, { n: 'እርጥብ', p: 90, c: 'fasting' }, { n: 'እርጥብ ስፔሻል', p: 120, c: 'fasting' }, { n: 'ፓስታ በአትክልት', p: 140, c: 'fasting' }, { n: 'ሩዝ በአትክልት', p: 140, c: 'fasting' },
@@ -208,6 +227,7 @@
         { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
     ];
 
+    // Helper set to identify which items are food plates
     const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
 
     const INVENTORY_ITEMS = [
@@ -232,15 +252,14 @@
         });
     };
 
-    // --- NEW TOGGLE FUNCTION ---
     function toggleGrid(id, btn) {
         const grid = document.getElementById(id);
         if(grid.classList.contains('show')) {
             grid.classList.remove('show');
-            if(id === 'inventory-container') grid.style.display = 'none'; // Special handling for inventory layout
+            if(id === 'inventory-container') grid.style.display = 'none';
             btn.classList.remove('active');
         } else {
-            // Close all others first (Accordion style - optional, remove this block if you want multiple open at once)
+            // Optional: Close others
             document.querySelectorAll('.menu-grid.show').forEach(g => {
                 g.classList.remove('show');
                 if(g.id === 'inventory-container') g.style.display = 'none';
@@ -248,7 +267,7 @@
             document.querySelectorAll('.section-btn.active').forEach(b => b.classList.remove('active'));
 
             grid.classList.add('show');
-            if(id === 'inventory-container') grid.style.display = 'block'; // Inventory is list, not grid
+            if(id === 'inventory-container') grid.style.display = 'block';
             btn.classList.add('active');
         }
     }
@@ -314,36 +333,68 @@
         document.getElementById('rev-name').value = ''; document.getElementById('rev-amt').value = '';
     }
 
+    // --- MAIN LOGIC ENGINE ---
     function sync() {
         const date = document.getElementById('work-date').value;
         
+        // 1. Transactions Listener
         db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
-            let s=0, e=0, foodPlates=0, html='', sum = {};
+            let s=0, e=0;
+            let foodPlates=0, bunaCount=0; // Incentive Counters
+            let html='', sum = {};
             
             snap.forEach(doc => {
                 const t = doc.data();
                 if(t.ex) e += t.p; else s += t.p;
                 
-                if (!t.ex && FOOD_SET.has(t.n)) {
-                    foodPlates += t.q;
+                // INCENTIVE LOGIC
+                if (!t.ex) {
+                    // Check if it's a food plate
+                    if (FOOD_SET.has(t.n)) {
+                        foodPlates += t.q;
+                    }
+                    // Check if it is EXACTLY "ቡና"
+                    if (t.n === 'ቡና') {
+                        bunaCount += t.q;
+                    }
                 }
 
                 if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
                 sum[t.n].q += t.q; sum[t.n].p += t.p;
             });
 
+            // Calculate Incentives
+            // Food: >25 plates, 7.3 ETB each
+            const foodInc = Math.max(0, (foodPlates - 25) * 7.3);
+            // Buna: >45 cups, 4.1 ETB each
+            const bunaInc = Math.max(0, (bunaCount - 45) * 4.1);
+            const totalInc = foodInc + bunaInc;
+
+            // Render Table
             for (let name in sum) {
                 const item = sum[name];
                 const color = item.isEx ? 'red' : (name.startsWith('IN:') ? 'green' : 'black');
                 html += `<tr><td style="color:${color}; font-weight:${name.startsWith('IN:')?'bold':'normal'}">${name}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}', 'transactions')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
             }
             document.getElementById('log-body').innerHTML = html;
-            document.getElementById('total-s').innerText = s;
-            document.getElementById('total-e').innerText = e;
-            document.getElementById('total-n').innerText = (s - e) + " ETB";
-            document.getElementById('total-plates').innerText = foodPlates;
+            
+            // Render Dashboard
+            document.getElementById('total-s').innerText = s.toLocaleString();
+            document.getElementById('total-e').innerText = e.toLocaleString();
+            document.getElementById('total-n').innerText = (s - e).toLocaleString() + " ETB";
+            
+            // Render Incentive Card
+            document.getElementById('total-inc').innerText = totalInc.toFixed(1) + " ETB";
+            document.getElementById('inc-breakdown').innerText = `${foodPlates} F / ${bunaCount} B`;
+
+            // Hidden Print Data
+            document.getElementById('p-sales').innerText = s;
+            document.getElementById('p-exp').innerText = e;
+            document.getElementById('p-net').innerText = (s-e);
+            document.getElementById('p-inc').innerText = totalInc.toFixed(1);
         });
 
+        // 2. Inventory Listener
         db.collection('inventory').where('d', '==', date).onSnapshot(snap => {
             let list = [];
             snap.forEach(doc => list.push({ ...doc.data(), id: doc.id }));
