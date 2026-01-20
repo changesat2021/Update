@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Bean & Bloom POS - Incentive Added</title>
+<title>Bean & Bloom POS - Monthly Tracker</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
 <style>
-    :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; --incentive: #2980b9; }
+    :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; --incentive: #2980b9; --gold: #f1c40f; }
     body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
     .container { max-width: 650px; margin: 0 auto; padding: 15px; }
     
@@ -72,8 +72,13 @@
     <div class="dashboard">
         <div class="card"><span class="lbl">Sales + Inc</span><span class="val" id="total-s" style="color:green">0</span></div>
         <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
-        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
+        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Daily Net Cash</span><span class="val" id="total-n">0</span></div>
         <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Food Plates Sold</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
+        
+        <div class="card" style="grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold);">
+            <span class="lbl" style="color:var(--gold); font-weight:bold;">MONTHLY CUMULATIVE NET (1st - Today)</span>
+            <span class="val" id="month-n" style="color:var(--gold); font-size:1.4rem;">Loading...</span>
+        </div>
         
         <div class="card" style="grid-column: span 2; border: 1px dashed var(--incentive); background: #fdfdfd;">
             <span class="lbl" style="color:var(--incentive); font-weight:bold;">Total Staff Incentive</span>
@@ -170,7 +175,6 @@
         { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
     ];
 
-    // Helper: Create a Set of all names that constitute "Food" (Fasting + Non-Fasting)
     const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
 
     const INVENTORY_ITEMS = [
@@ -181,6 +185,8 @@
     ];
 
     let sel = null, isAdmin = false;
+    let dailyListener = null;
+    let monthlyListener = null;
 
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
@@ -259,26 +265,22 @@
     function sync() {
         const date = document.getElementById('work-date').value;
         
-        // Sync Sales & Expenses & Calculate Incentives
-        db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
+        // Unsubscribe previous listeners to prevent memory leaks/double counting
+        if(dailyListener) dailyListener();
+        if(monthlyListener) monthlyListener();
+        
+        // 1. DAILY SYNC (Existing Logic)
+        dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, foodPlates=0, bunaQty=0, html='', sum = {};
             
             snap.forEach(doc => {
                 const t = doc.data();
                 if(t.ex) e += t.p; else s += t.p;
                 
-                // --- INCENTIVE TRACKING ---
                 if (!t.ex) {
-                    // Check for Food (Fasting/Non-fasting)
-                    if (FOOD_SET.has(t.n)) {
-                        foodPlates += t.q;
-                    }
-                    // Check specifically for Buna (Coffee)
-                    if (t.n === 'ቡና') {
-                        bunaQty += t.q;
-                    }
+                    if (FOOD_SET.has(t.n)) foodPlates += t.q;
+                    if (t.n === 'ቡና') bunaQty += t.q;
                 }
-                // ---------------------------
 
                 if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
                 sum[t.n].q += t.q; sum[t.n].p += t.p;
@@ -295,27 +297,42 @@
             document.getElementById('total-n').innerText = (s - e) + " ETB";
             document.getElementById('total-plates').innerText = foodPlates;
 
-            // --- CALCULATE INCENTIVE ---
+            // Incentive Logic
             let foodIncentive = 0;
-            if(foodPlates > 25) {
-                foodIncentive = (foodPlates - 25) * 7.3;
-            }
+            if(foodPlates > 25) foodIncentive = (foodPlates - 25) * 7.3;
 
             let bunaIncentive = 0;
-            if(bunaQty > 45) {
-                bunaIncentive = (bunaQty - 45) * 4.1;
-            }
+            if(bunaQty > 45) bunaIncentive = (bunaQty - 45) * 4.1;
 
             let totalIncentive = foodIncentive + bunaIncentive;
 
-            // Update Incentive UI
             document.getElementById('total-incentive').innerText = totalIncentive.toFixed(2) + " ETB";
             document.getElementById('inc-food-val').innerText = foodIncentive.toFixed(1);
             document.getElementById('inc-buna-val').innerText = bunaIncentive.toFixed(1);
             document.getElementById('buna-qty-disp').innerText = bunaQty;
         });
 
-        // Sync Inventory
+        // 2. MONTHLY CUMULATIVE SYNC (New Logic)
+        const year = date.split('-')[0];
+        const month = date.split('-')[1];
+        const startOfMonth = `${year}-${month}-01`;
+
+        document.getElementById('month-n').innerText = "...";
+        
+        monthlyListener = db.collection('transactions')
+            .where('d', '>=', startOfMonth)
+            .where('d', '<=', date)
+            .onSnapshot(snap => {
+                let monthlyNet = 0;
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    if(t.ex) monthlyNet -= t.p;
+                    else monthlyNet += t.p;
+                });
+                document.getElementById('month-n').innerText = monthlyNet.toLocaleString() + " ETB";
+            });
+
+        // 3. Inventory Sync
         db.collection('inventory').where('d', '==', date).onSnapshot(snap => {
             let list = [];
             snap.forEach(doc => list.push({ ...doc.data(), id: doc.id }));
