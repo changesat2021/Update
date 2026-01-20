@@ -1,108 +1,379 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Floating Money</title>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <style>
-        body { font-family: sans-serif; background: #e0f7fa; padding: 20px; margin: 0; }
-        .container { max-width: 500px; margin: 0 auto; }
-        .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h2 { margin-top: 0; color: #006064; text-align: center; }
-        input, select, button { width: 100%; padding: 12px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
-        button { background: #00bcd4; color: white; border: none; font-weight: bold; cursor: pointer; }
-        .summary { display: flex; justify-content: space-between; font-weight: bold; }
-        .in { color: green; } .out { color: red; }
-        .record { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; align-items: center; }
-        .tag { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; color: white; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bean & Bloom POS - Monthly Tracker</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+<style>
+    :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; --incentive: #2980b9; --gold: #f1c40f; }
+    body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
+    .container { max-width: 650px; margin: 0 auto; padding: 15px; }
+    
+    /* UI Components */
+    header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    
+    .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    
+    .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
+    .val { font-size: 1.1rem; font-weight: 800; display: block; }
+    .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
+    
+    /* Menu */
+    .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
+    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
+    .food-btn { border-left-color: var(--food); }
+    .add-btn { border-left-color: #7f8c8d; }
+
+    /* Inventory Rows */
+    .inv-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #eee; }
+    .inv-name { font-size: 0.9rem; font-weight: bold; flex: 2; color: #333; }
+    .inv-in { width: 70px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: center; margin-right: 8px; font-size: 1rem;}
+    .inv-btn { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .inv-btn.saved { background: green; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+    .print-only { display: none; }
+
+    @media print {
+        .no-print { display: none !important; }
+        .print-only { display: block !important; }
+        body { background: white; }
+        .container { max-width: 100%; padding: 0; }
+        .card { border: none; }
+        .inv-row { display: none; }
+    }
+
+    .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
+    .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <h2>💰 Floating Money</h2>
-            <div class="summary">
-                <div style="text-align:center">IN<br><span id="sum-in" class="in">0</span></div>
-                <div style="text-align:center">OUT<br><span id="sum-out" class="out">0</span></div>
-                <div style="text-align:center">BALANCE<br><span id="sum-bal" style="color:#333">0</span></div>
+<div class="container">
+    <div class="print-only" style="text-align:center;">
+        <h1 style="margin:0;">BEAN & BLOOM COFFEEHOUSE</h1>
+        <p id="pdf-date" style="font-weight:bold;"></p>
+        <hr>
+        <h3>DAILY SALES SUMMARY</h3>
+    </div>
+
+    <header class="no-print">
+        <h2 style="color:var(--primary)">☕ Bean & Bloom</h2>
+        <input type="date" id="work-date">
+    </header>
+
+    <div class="dashboard">
+        <div class="card"><span class="lbl">Sales + Inc</span><span class="val" id="total-s" style="color:green">0</span></div>
+        <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
+        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Daily Net Cash</span><span class="val" id="total-n">0</span></div>
+        <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Food Plates Sold</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
+        
+        <div class="card" style="grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold);">
+            <span class="lbl" style="color:var(--gold); font-weight:bold;">MONTHLY CUMULATIVE NET (1st - Today)</span>
+            <span class="val" id="month-n" style="color:var(--gold); font-size:1.4rem;">Loading...</span>
+        </div>
+        
+        <div class="card" style="grid-column: span 2; border: 1px dashed var(--incentive); background: #fdfdfd;">
+            <span class="lbl" style="color:var(--incentive); font-weight:bold;">Total Staff Incentive</span>
+            <span class="val" id="total-incentive" style="color:var(--incentive); font-size:1.3rem;">0.00 ETB</span>
+            <div style="display:flex; justify-content:center; gap:15px; font-size:0.75rem; color:#555; margin-top:5px;">
+                <span>Food > 25: <b id="inc-food-val">0</b></span>
+                <span>Buna > 45: <b id="inc-buna-val">0</b> (Qty: <span id="buna-qty-disp">0</span>)</span>
             </div>
-        </div>
-
-        <div class="card">
-            <input id="f-person" placeholder="Waiter / Handler Name">
-            <input id="f-desc" placeholder="Description (e.g. Coffee Base)">
-            <input type="number" id="f-amt" placeholder="Amount">
-            <select id="f-type">
-                <option value="in">Money IN (Deposit)</option>
-                <option value="out">Money OUT (Expense/Change)</option>
-            </select>
-            <button onclick="addFloat()">Record Transaction</button>
-        </div>
-
-        <div class="card">
-            <h3>Today's Log</h3>
-            <div id="log-list"></div>
         </div>
     </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
-            authDomain: "bean-5a113.firebaseapp.com",
-            projectId: "bean-5a113",
-            storageBucket: "bean-5a113.firebasestorage.app",
-            messagingSenderId: "702927377502",
-            appId: "1:702927377502:web:9e50192a0c431da69850cf"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+    <div class="no-print">
+        <div class="section-title">Hot & Cold Drinks</div><div id="grid-hot" class="menu-grid"></div>
+        <div class="section-title">Special Juices</div><div id="grid-juices" class="menu-grid"></div>
+        <div class="section-title">Fasting Food</div><div id="grid-fasting" class="menu-grid"></div>
+        <div class="section-title">Non-Fasting Food</div><div id="grid-nonfast" class="menu-grid"></div>
+        <div class="section-title">Additives & Snacks</div><div id="grid-add" class="menu-grid"></div>
 
-        const today = new Date().toISOString().split('T')[0];
+        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed green;">
+            <p style="font-weight:bold; color:green; font-size:0.7rem; margin-bottom:5px;">ADD EXTRA REVENUE/INCOME</p>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="rev-name" placeholder="Source/Reason..." style="flex:2; padding:8px;">
+                <input type="number" id="rev-amt" placeholder="Amount" style="flex:1; padding:8px;">
+            </div>
+            <button onclick="saveRev()" style="width:100%; margin-top:5px; padding:10px; background:green; color:white; border:none; border-radius:5px;">Save Income (+)</button>
+        </div>
 
-        function addFloat() {
-            const p = document.getElementById('f-person').value;
-            const d = document.getElementById('f-desc').value;
-            const a = parseFloat(document.getElementById('f-amt').value);
-            const t = document.getElementById('f-type').value;
+        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:10px; border:1px dashed red;">
+            <p style="font-weight:bold; color:red; font-size:0.7rem; margin-bottom:5px;">ADD EXPENSE/PAYOUT</p>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="ex-name" placeholder="Reason..." style="flex:2; padding:8px;">
+                <input type="number" id="ex-amt" placeholder="Amount" style="flex:1; padding:8px;">
+            </div>
+            <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout (-)</button>
+        </div>
 
-            if(!p || !d || !a) return alert("Fill all fields");
+        <div class="section-title" style="color:var(--accent); margin-top:30px; border-color:var(--accent);">End of Day: Items Left (Data Only)</div>
+        <div id="inventory-container"></div>
+    </div>
 
-            db.collection('floating').add({
-                person: p, description: d, amount: a, type: t, date: today, ts: Date.now()
-            }).then(() => {
-                document.getElementById('f-desc').value = '';
-                document.getElementById('f-amt').value = '';
+    <div class="card" style="padding:0; margin-top:20px; overflow:hidden;">
+        <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Itemized Sales Report</h4>
+        <table>
+            <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
+            <tbody id="log-body"></tbody>
+        </table>
+    </div>
+
+    <div class="card" style="padding:0; margin-top:20px; overflow:hidden; border:1px solid #ccc;">
+        <h4 style="padding:10px; background:#eee; margin:0; font-size:0.8rem;">Inventory / Stock Count (Data Only)</h4>
+        <table>
+            <thead><tr><th>Item Name</th><th>Amount Left</th><th class="no-print"></th></tr></thead>
+            <tbody id="inv-report-body"></tbody>
+        </table>
+    </div>
+
+    <div class="admin-nav no-print">
+        <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
+        <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Save PDF & Finalize</button>
+    </div>
+</div>
+
+<div id="qty-modal" class="modal">
+    <div class="modal-content" style="background:white; padding:20px; border-radius:15px; text-align:center;">
+        <h3 id="m-item">Item</h3>
+        <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100px; text-align:center; margin:15px;">
+        <div style="display:flex; gap:10px;">
+            <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
+            <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Add</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
+        authDomain: "bean-5a113.firebaseapp.com",
+        projectId: "bean-5a113",
+        storageBucket: "bean-5a113.firebasestorage.app",
+        messagingSenderId: "702927377502",
+        appId: "1:702927377502:web:9e50192a0c431da69850cf"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore(), auth = firebase.auth();
+    const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
+
+    const MENU = [
+        { n: 'ቡና', p: 40, c: 'hot' }, { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ለውዝ', p: 50, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
+        { n: 'ለስላሳ', p: 50, c: 'hot' }, { n: 'ውሃ 2 ሊትር', p: 40, c: 'hot' }, { n: 'ውሃ 1 ሊትር', p: 35, c: 'hot' }, { n: 'ውሃ ግማሽ', p: 25, c: 'hot' },
+        { n: 'አቮካዶ ጁስ', p: 120, c: 'juices' }, { n: 'ማንጎ ጁስ', p: 120, c: 'juices' }, { n: 'ፓፓያ ጁስ', p: 120, c: 'juices' }, { n: 'ሙዝ ጁስ', p: 120, c: 'juices' }, { n: 'አናናስ', p: 120, c: 'juices' }, { n: 'ተልባ ጁስ', p: 120, c: 'juices' }, { n: 'በሶ ጁስ', p: 120, c: 'juices' }, { n: 'ወተት በአቮካዶ', p: 200, c: 'juices' }, { n: 'ስፔሻል ጁስ', p: 250, c: 'juices' },
+        { n: 'ፓስታ በስጎ', p: 130, c: 'fasting' }, { n: 'ሽሮ', p: 120, c: 'fasting' }, { n: 'ተጋቢኖ', p: 130, c: 'fasting' }, { n: 'ሽሮ በሰላጣ', p: 180, c: 'fasting' }, { n: 'ፍርፍር', p: 100, c: 'fasting' }, { n: 'ሃፍ ሃፍ', p: 150, c: 'fasting' }, { n: 'ፉል ኖርማል', p: 90, c: 'fasting' }, { n: 'ፉል በአቮካዶ', p: 90, c: 'fasting' }, { n: 'ፉል በእንቁላል', p: 120, c: 'fasting' }, { n: 'ቲማቲም ለብለብ', p: 100, c: 'fasting' }, { n: 'በያይነት', p: 140, c: 'fasting' }, { n: 'ፎሶሊያ', p: 160, c: 'fasting' }, { n: 'አዚፋ', p: 160, c: 'fasting' }, { n: 'ቺፕስ 25', p: 25, c: 'fasting' }, { n: 'ቺፕስ 35', p: 35, c: 'fasting' }, { n: 'ቺፕስ 80', p: 80, c: 'fasting' }, { n: 'እርጥብ', p: 90, c: 'fasting' }, { n: 'እርጥብ ስፔሻል', p: 120, c: 'fasting' }, { n: 'ፓስታ በአትክልት', p: 140, c: 'fasting' }, { n: 'ሩዝ በአትክልት', p: 140, c: 'fasting' },
+        { n: 'ጥብስ', p: 270, c: 'nonfast' }, { n: 'ስጋ ፍርፍር', p: 250, c: 'nonfast' }, { n: 'ፓስታ በስጋ', p: 250, c: 'nonfast' }, { n: 'ፓስታ በ እንቁላል', p: 200, c: 'nonfast' }, { n: 'እንቁላል ሳንድዊች', p: 120, c: 'nonfast' }, { n: 'ጥብስ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'እንቁላል በስጋ', p: 250, c: 'nonfast' }, { n: 'እንቁላል ፍርፍር', p: 140, c: 'nonfast' }, { n: 'ቋንጣ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'ፉል በቅቤ', p: 140, c: 'nonfast' }, { n: 'ሽሮ በቅቤ', p: 180, c: 'nonfast' },
+        { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
+    ];
+
+    const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
+
+    const INVENTORY_ITEMS = [
+        "ውሃ 1 ሊትር", "ውሃ ግማሽ", "ውሃ 2 ሊትር", "ለስላሳ", "እንጀራ", "ዳቦ",
+        "ቡና በኪሎ", "ሽንኩርት", "ፓስታ ቁጥር", "ነጭ ሽንኩርት ኪሎ",
+        "ካሮት ኪሎ", "ቲማቲም ኪሎ", "ጥቅል ጎመን", "ጎመን",
+        "ድንች ኪሎ", "መኮረኒ ኪሎ", "ምስር ኪሎ", "ሩዝ ኪሎ", "ድፍን ምስር ኪሎ"
+    ];
+
+    let sel = null, isAdmin = false;
+    let dailyListener = null;
+    let monthlyListener = null;
+
+    window.onload = () => {
+        document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('work-date').onchange = sync;
+        renderMenu();
+        renderInventoryInputs();
+        auth.onAuthStateChanged(user => {
+            isAdmin = (user && user.uid === adminUID);
+            document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
+            document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
+            sync();
+        });
+    };
+
+    function renderMenu() {
+        MENU.forEach(i => {
+            const btn = document.createElement('div');
+            btn.className = `menu-btn ${['fasting','nonfast'].includes(i.c) ? 'food-btn' : (i.c=='add'?'add-btn':'')}`;
+            btn.innerHTML = `<strong>${i.n}</strong><br><small>${i.p} ETB</small>`;
+            btn.onclick = () => { sel = i; document.getElementById('m-item').innerText = i.n; document.getElementById('qty-modal').style.display='flex'; };
+            document.getElementById('grid-' + i.c).appendChild(btn);
+        });
+    }
+
+    function renderInventoryInputs() {
+        const container = document.getElementById('inventory-container');
+        INVENTORY_ITEMS.forEach((name, idx) => {
+            const row = document.createElement('div');
+            row.className = 'inv-row';
+            row.innerHTML = `
+                <span class="inv-name">${name}</span>
+                <input type="number" id="inv-in-${idx}" class="inv-in" placeholder="#">
+                <button class="inv-btn" id="inv-btn-${idx}" onclick="saveInventory('${name}', 'inv-in-${idx}', 'inv-btn-${idx}')">Save</button>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    async function saveInventory(itemName, inputId, btnId) {
+        const qty = document.getElementById(inputId).value;
+        if(qty === '') return;
+        const btn = document.getElementById(btnId);
+        btn.innerText = '...';
+        try {
+            await db.collection('inventory').add({
+                n: itemName, left: qty, d: document.getElementById('work-date').value, ts: Date.now()
             });
+            btn.innerText = 'Saved'; btn.classList.add('saved');
+            setTimeout(() => { btn.innerText = 'Save'; btn.classList.remove('saved'); document.getElementById(inputId).value = ''; }, 1500);
+        } catch (error) {
+            console.error(error); alert("Error saving."); btn.innerText = 'Retry';
         }
+    }
 
-        db.collection('floating').where('date', '==', today).orderBy('ts', 'desc').onSnapshot(snap => {
-            let tin = 0, tout = 0, html = '';
+    async function confirmSale() {
+        const q = parseInt(document.getElementById('m-qty').value);
+        if(!q) return;
+        await db.collection('transactions').add({ n: sel.n, q: q, p: sel.p * q, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
+        closeModal();
+    }
+
+    async function saveEx() {
+        const n = document.getElementById('ex-name').value, p = parseFloat(document.getElementById('ex-amt').value);
+        if(!n || !p) return;
+        await db.collection('transactions').add({ n: "OUT: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: true, ts: Date.now() });
+        document.getElementById('ex-name').value = ''; document.getElementById('ex-amt').value = '';
+    }
+
+    async function saveRev() {
+        const n = document.getElementById('rev-name').value, p = parseFloat(document.getElementById('rev-amt').value);
+        if(!n || !p) return;
+        await db.collection('transactions').add({ n: "IN: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
+        document.getElementById('rev-name').value = ''; document.getElementById('rev-amt').value = '';
+    }
+
+    function sync() {
+        const date = document.getElementById('work-date').value;
+        
+        // Unsubscribe previous listeners to prevent memory leaks/double counting
+        if(dailyListener) dailyListener();
+        if(monthlyListener) monthlyListener();
+        
+        // 1. DAILY SYNC (Existing Logic)
+        dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
+            let s=0, e=0, foodPlates=0, bunaQty=0, html='', sum = {};
+            
             snap.forEach(doc => {
-                const d = doc.data();
-                if(d.type === 'in') tin += d.amount; else tout += d.amount;
-                html += `
-                    <div class="record">
-                        <div>
-                            <span class="tag" style="background:${d.type=='in'?'green':'red'}">${d.type.toUpperCase()}</span>
-                            <strong>${d.person}</strong>: ${d.description}
-                        </div>
-                        <div style="text-align:right">
-                            <span style="font-weight:bold">${d.amount}</span><br>
-                            <small onclick="del('${doc.id}')" style="color:#aaa; cursor:pointer">delete</small>
-                        </div>
-                    </div>`;
+                const t = doc.data();
+                if(t.ex) e += t.p; else s += t.p;
+                
+                if (!t.ex) {
+                    if (FOOD_SET.has(t.n)) foodPlates += t.q;
+                    if (t.n === 'ቡና') bunaQty += t.q;
+                }
+
+                if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
+                sum[t.n].q += t.q; sum[t.n].p += t.p;
             });
-            document.getElementById('sum-in').innerText = tin;
-            document.getElementById('sum-out').innerText = tout;
-            document.getElementById('sum-bal').innerText = tin - tout;
-            document.getElementById('log-list').innerHTML = html || '<p style="text-align:center;color:#ccc">No records today</p>';
+
+            for (let name in sum) {
+                const item = sum[name];
+                const color = item.isEx ? 'red' : (name.startsWith('IN:') ? 'green' : 'black');
+                html += `<tr><td style="color:${color}; font-weight:${name.startsWith('IN:')?'bold':'normal'}">${name}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}', 'transactions')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
+            }
+            document.getElementById('log-body').innerHTML = html;
+            document.getElementById('total-s').innerText = s;
+            document.getElementById('total-e').innerText = e;
+            document.getElementById('total-n').innerText = (s - e) + " ETB";
+            document.getElementById('total-plates').innerText = foodPlates;
+
+            // Incentive Logic
+            let foodIncentive = 0;
+            if(foodPlates > 25) foodIncentive = (foodPlates - 25) * 7.3;
+
+            let bunaIncentive = 0;
+            if(bunaQty > 45) bunaIncentive = (bunaQty - 45) * 4.1;
+
+            let totalIncentive = foodIncentive + bunaIncentive;
+
+            document.getElementById('total-incentive').innerText = totalIncentive.toFixed(2) + " ETB";
+            document.getElementById('inc-food-val').innerText = foodIncentive.toFixed(1);
+            document.getElementById('inc-buna-val').innerText = bunaIncentive.toFixed(1);
+            document.getElementById('buna-qty-disp').innerText = bunaQty;
         });
 
-        function del(id) {
-            if(confirm("Remove this entry?")) db.collection('floating').doc(id).delete();
+        // 2. MONTHLY CUMULATIVE SYNC (New Logic)
+        const year = date.split('-')[0];
+        const month = date.split('-')[1];
+        const startOfMonth = `${year}-${month}-01`;
+
+        document.getElementById('month-n').innerText = "...";
+        
+        monthlyListener = db.collection('transactions')
+            .where('d', '>=', startOfMonth)
+            .where('d', '<=', date)
+            .onSnapshot(snap => {
+                let monthlyNet = 0;
+                snap.forEach(doc => {
+                    const t = doc.data();
+                    if(t.ex) monthlyNet -= t.p;
+                    else monthlyNet += t.p;
+                });
+                document.getElementById('month-n').innerText = monthlyNet.toLocaleString() + " ETB";
+            });
+
+        // 3. Inventory Sync
+        db.collection('inventory').where('d', '==', date).onSnapshot(snap => {
+            let list = [];
+            snap.forEach(doc => list.push({ ...doc.data(), id: doc.id }));
+            list.sort((a, b) => b.ts - a.ts);
+            let html = '';
+            list.forEach(i => {
+                html += `<tr><td>${i.n}</td><td>${i.left}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${i.id}', 'inventory')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
+            });
+            if(html === '') html = '<tr><td colspan="3" style="color:#aaa; text-align:center;">No data recorded today</td></tr>';
+            document.getElementById('inv-report-body').innerHTML = html;
+        });
+    }
+
+    function initiatePrint() {
+        document.getElementById('pdf-date').innerText = "DATE: " + document.getElementById('work-date').value;
+        window.print();
+        setTimeout(() => { if(confirm("Report Saved? Clear all daily records for a fresh start?")) clearDay(); }, 1500);
+    }
+
+    async function clearDay() {
+        const date = document.getElementById('work-date').value;
+        const batch = db.batch();
+        const tSnap = await db.collection('transactions').where('d', '==', date).get();
+        tSnap.forEach(d => batch.delete(d.ref));
+        const iSnap = await db.collection('inventory').where('d', '==', date).get();
+        iSnap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        alert("System Brushed. Ready for next day.");
+    }
+
+    async function delDoc(id, col) { if(confirm("Admin: Delete record?")) await db.collection(col).doc(id).delete(); }
+    
+    async function handleAuth() {
+        if(auth.currentUser) { auth.signOut(); } 
+        else {
+            const email = prompt("Admin Email:"), pass = prompt("Password:");
+            if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
         }
-    </script>
+    }
+
+    function closeModal() { document.getElementById('qty-modal').style.display='none'; document.getElementById('m-qty').value = 1; }
+</script>
 </body>
 </html>
