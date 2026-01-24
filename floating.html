@@ -75,7 +75,7 @@
         <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
         <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Food Plates</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
         
-        <div class="card" style="grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold); margin-top:5px;">
+        <div id="monthly-card" class="card" style="display:none; grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold); margin-top:5px;">
             <span class="lbl" style="color:var(--gold); font-weight:bold;">MONTHLY CUMULATIVE NET (1st - Today)</span>
             <span class="val" id="month-n" style="color:var(--gold); font-size:1.4rem;">Loading...</span>
         </div>
@@ -183,11 +183,20 @@
 
     const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
 
+    // UPDATED INVENTORY LIST
     const INVENTORY_ITEMS = [
-        "ውሃ 1 ሊትር", "ውሃ ግማሽ", "ውሃ 2 ሊትር", "ለስላሳ", "እንጀራ", "ዳቦ",
-        "ቡና በኪሎ", "ሽንኩርት", "ፓስታ ቁጥር", "ነጭ ሽንኩርት ኪሎ",
-        "ካሮት ኪሎ", "ቲማቲም ኪሎ", "ጥቅል ጎመን", "ጎመን",
-        "ድንች ኪሎ", "መኮረኒ ኪሎ", "ምስር ኪሎ", "ሩዝ ኪሎ", "ድፍን ምስር ኪሎ"
+        "ውሃ ግማሽ",
+        "ውሃ 1 ሊትር",
+        "ውሃ 2 ሊትር",
+        "ለስላሳ",
+        "እንጀራ",
+        "ዳቦ",
+        "እንቁላል",
+        "የጥብስ ስጋ",
+        "የዱለት ስጋ",
+        "የቋንጣ ስጋ",
+        "ፓስታ በፐርሰንት",
+        "ቡና በፐርሰንት"
     ];
 
     let sel = null, isAdmin = false;
@@ -199,10 +208,21 @@
         document.getElementById('work-date').onchange = sync;
         renderMenu();
         renderInventoryInputs();
+        
+        // AUTH LISTENER: UPDATED TO TOGGLE MONTHLY CARD
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
+            
+            // Toggle Login Button text
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
+            
+            // Toggle Print/Clear Button
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
+            
+            // Toggle Monthly Net Dashboard
+            const mCard = document.getElementById('monthly-card');
+            if(mCard) mCard.style.display = isAdmin ? 'block' : 'none';
+
             sync();
         });
     };
