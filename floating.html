@@ -70,22 +70,23 @@
     </header>
 
     <div class="dashboard">
-        <div class="card"><span class="lbl">Sales + Inc</span><span class="val" id="total-s" style="color:green">0</span></div>
-        <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
+        <div class="card"><span class="lbl">Daily Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
+        <div class="card"><span class="lbl">Daily Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
         <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Daily Net Cash</span><span class="val" id="total-n">0</span></div>
-        <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Food Plates Sold</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
+        <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Daily Food Plates</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
         
-        <div class="card" style="grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold);">
-            <span class="lbl" style="color:var(--gold); font-weight:bold;">MONTHLY CUMULATIVE NET (1st - Today)</span>
+        <div class="card" style="grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold); margin-top:5px;">
+            <span class="lbl" style="color:var(--gold); font-weight:bold;">MONTHLY NET CASH (1st - Today)</span>
             <span class="val" id="month-n" style="color:var(--gold); font-size:1.4rem;">Loading...</span>
         </div>
         
-        <div class="card" style="grid-column: span 2; border: 1px dashed var(--incentive); background: #fdfdfd;">
-            <span class="lbl" style="color:var(--incentive); font-weight:bold;">Total Staff Incentive</span>
-            <span class="val" id="total-incentive" style="color:var(--incentive); font-size:1.3rem;">0.00 ETB</span>
-            <div style="display:flex; justify-content:center; gap:15px; font-size:0.75rem; color:#555; margin-top:5px;">
-                <span>Food > 25: <b id="inc-food-val">0</b></span>
-                <span>Buna > 45: <b id="inc-buna-val">0</b> (Qty: <span id="buna-qty-disp">0</span>)</span>
+        <div class="card" style="grid-column: span 2; border: 2px solid var(--incentive); background: #ebf5fb;">
+            <span class="lbl" style="color:var(--incentive); font-weight:bold;">MONTHLY STAFF INCENTIVE (TOTAL)</span>
+            <span class="val" id="month-incentive" style="color:var(--incentive); font-size:1.5rem;">0.00 ETB</span>
+            
+            <div style="border-top:1px solid #ccc; margin-top:8px; padding-top:8px; font-size:0.75rem; color:#555; display:flex; justify-content:space-between;">
+                <span>Today's Contribution: <b id="today-inc-val">0.00</b></span>
+                <span>(Resets on the 1st)</span>
             </div>
         </div>
     </div>
@@ -265,22 +266,19 @@
     function sync() {
         const date = document.getElementById('work-date').value;
         
-        // Unsubscribe previous listeners to prevent memory leaks/double counting
+        // Unsubscribe previous listeners
         if(dailyListener) dailyListener();
         if(monthlyListener) monthlyListener();
         
-        // 1. DAILY SYNC (Existing Logic)
+        // 1. DAILY SYNC
         dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
-            let s=0, e=0, foodPlates=0, bunaQty=0, html='', sum = {};
+            let s=0, e=0, foodPlates=0, html='', sum = {};
             
             snap.forEach(doc => {
                 const t = doc.data();
                 if(t.ex) e += t.p; else s += t.p;
                 
-                if (!t.ex) {
-                    if (FOOD_SET.has(t.n)) foodPlates += t.q;
-                    if (t.n === 'ቡና') bunaQty += t.q;
-                }
+                if (!t.ex && FOOD_SET.has(t.n)) foodPlates += t.q;
 
                 if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
                 sum[t.n].q += t.q; sum[t.n].p += t.p;
@@ -296,40 +294,63 @@
             document.getElementById('total-e').innerText = e;
             document.getElementById('total-n').innerText = (s - e) + " ETB";
             document.getElementById('total-plates').innerText = foodPlates;
-
-            // Incentive Logic
-            let foodIncentive = 0;
-            if(foodPlates > 25) foodIncentive = (foodPlates - 25) * 7.3;
-
-            let bunaIncentive = 0;
-            if(bunaQty > 45) bunaIncentive = (bunaQty - 45) * 4.1;
-
-            let totalIncentive = foodIncentive + bunaIncentive;
-
-            document.getElementById('total-incentive').innerText = totalIncentive.toFixed(2) + " ETB";
-            document.getElementById('inc-food-val').innerText = foodIncentive.toFixed(1);
-            document.getElementById('inc-buna-val').innerText = bunaIncentive.toFixed(1);
-            document.getElementById('buna-qty-disp').innerText = bunaQty;
         });
 
-        // 2. MONTHLY CUMULATIVE SYNC (New Logic)
+        // 2. MONTHLY CUMULATIVE SYNC (Net Cash AND Incentive)
         const year = date.split('-')[0];
         const month = date.split('-')[1];
         const startOfMonth = `${year}-${month}-01`;
 
         document.getElementById('month-n').innerText = "...";
+        document.getElementById('month-incentive').innerText = "...";
         
         monthlyListener = db.collection('transactions')
             .where('d', '>=', startOfMonth)
             .where('d', '<=', date)
             .onSnapshot(snap => {
                 let monthlyNet = 0;
+                let dailyStats = {}; // Stores { "2023-10-01": { food: 0, buna: 0 } }
+
                 snap.forEach(doc => {
                     const t = doc.data();
+                    
+                    // Net Cash Calculation
                     if(t.ex) monthlyNet -= t.p;
                     else monthlyNet += t.p;
+
+                    // Incentive Data Collection
+                    if (!t.ex) {
+                        const day = t.d; // Group by date
+                        if (!dailyStats[day]) dailyStats[day] = { food: 0, buna: 0 };
+                        
+                        if (FOOD_SET.has(t.n)) dailyStats[day].food += t.q;
+                        if (t.n === 'ቡና') dailyStats[day].buna += t.q;
+                    }
                 });
+
+                // Calculate Cumulative Incentive based on Daily Thresholds
+                let totalMonthlyIncentive = 0;
+                let todayIncentive = 0;
+
+                for (const [dayKey, stats] of Object.entries(dailyStats)) {
+                    let dailyInc = 0;
+                    
+                    // Incentive Rule: Food > 25
+                    if (stats.food > 25) dailyInc += (stats.food - 25) * 7.3;
+                    
+                    // Incentive Rule: Buna > 45
+                    if (stats.buna > 45) dailyInc += (stats.buna - 45) * 4.1;
+
+                    totalMonthlyIncentive += dailyInc;
+
+                    if (dayKey === date) {
+                        todayIncentive = dailyInc;
+                    }
+                }
+
                 document.getElementById('month-n').innerText = monthlyNet.toLocaleString() + " ETB";
+                document.getElementById('month-incentive').innerText = totalMonthlyIncentive.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " ETB";
+                document.getElementById('today-inc-val').innerText = todayIncentive.toFixed(2);
             });
 
         // 3. Inventory Sync
