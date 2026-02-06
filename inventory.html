@@ -1,255 +1,216 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Bean & Bloom POS - Inventory Logic</title>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean Café Management</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        :root { --primary: #4a2c2a; --accent: #d4a373; --light: #fefae0; --success: #2d6a4f; --danger: #bc4749; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; background: #f4f4f4; color: #333; padding-bottom: 50px; }
+        .header { background: var(--primary); color: white; padding: 1rem; position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .container { max-width: 800px; margin: auto; padding: 10px; }
+        
+        /* Layout Grid */
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; padding: 10px; }
+        .menu-btn { background: white; border: 1px solid #ddd; padding: 15px 5px; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; font-size: 0.9rem; }
+        .menu-btn:active { transform: scale(0.95); background: var(--accent); }
+        .food-btn { border-left: 5px solid var(--success); }
+        .add-btn { border-left: 5px solid var(--accent); }
 
-<style>
-    :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; --incentive: #2980b9; --gold: #f1c40f; --danger: #c0392b; }
-    body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
-    .container { max-width: 650px; margin: 0 auto; padding: 15px; }
-    
-    header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    
-    .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
-    .val { font-size: 1.1rem; font-weight: 800; display: block; }
-    .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight:bold; }
-    
-    /* ADMIN INPUT BOX STYLE */
-    .admin-box { grid-column: span 2; background: #fff0f0; border: 2px dashed red; padding: 10px; border-radius: var(--radius); display: none; }
-    .admin-box h4 { margin: 0 0 10px 0; color: #c0392b; font-size: 0.9rem; text-transform: uppercase; }
-    .admin-input-row { display: flex; justify-content: space-around; gap: 10px; }
-    .admin-input-grp { display: flex; flex-direction: column; align-items: center; }
-    .admin-input-grp label { font-size: 0.7rem; font-weight: bold; margin-bottom: 3px; color: #333; }
-    .admin-input-grp input[type="number"] { padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 80px; text-align: center; font-weight: bold; font-size: 1.1rem; }
+        /* Accordion */
+        .accordion { background-color: #eee; color: #444; cursor: pointer; padding: 15px; width: 100%; border: none; text-align: left; outline: none; font-size: 16px; font-weight: bold; transition: 0.4s; border-radius: 5px; margin-top: 10px; display: flex; justify-content: space-between; }
+        .active, .accordion:hover { background-color: #ccc; }
+        .panel { padding: 0 10px; background-color: white; max-height: 0; overflow: hidden; transition: max-height 0.2s ease-out; border-radius: 0 0 5px 5px; }
+        .panel.show { padding: 10px; border: 1px solid #eee; border-top: none; }
 
-    /* CHECKBOX TOGGLES */
-    .chk-container { display:flex; gap:15px; justify-content:center; margin-top:10px; background:#fff; padding:10px; border-radius:5px; }
-    .chk-lbl { display:flex; align-items:center; gap:5px; font-size:0.8rem; font-weight:bold; color:#333; cursor:pointer;}
-    .chk-lbl input { width:18px; height:18px; accent-color: red; }
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.9rem; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f8f8f8; }
+        .stock-curr { font-weight: bold; color: var(--primary); background: #fff9f0; }
 
-    .section-header { background-color: #fff; color: var(--primary); padding: 12px 5px; width: 100%; text-align: left; font-size: 1.1rem; font-weight: bold; border-bottom: 2px solid #ddd; margin-top: 20px; display:block; }
-    .section-content { display: block; margin-bottom: 10px; }
+        /* Admin Controls */
+        .admin-section { background: #fff; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid #ddd; }
+        .stat-card { background: var(--primary); color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        
+        /* Modal */
+        #qty-modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; justify-content:center; align-items:center; z-index:1000; }
+        .modal-content { background:white; padding:30px; border-radius:10px; text-align:center; width: 80%; max-width: 300px; }
+        input[type="number"], input[type="text"] { width: 80%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-main { background: var(--success); color: white; width: 100%; }
+        .btn-outline { background: transparent; border: 1px solid white; color: white; font-size: 0.8rem; }
+        
+        .inv-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .inv-in { width: 60px !important; margin: 0 !important; padding: 5px !important; }
+        .inv-btn { background: var(--success); color: white; border: none; padding: 5px 10px; border-radius: 3px; }
 
-    .accordion { background-color: #e8e8e8; color: #333; cursor: pointer; padding: 15px; width: 100%; border: none; text-align: left; outline: none; font-size: 1rem; transition: 0.4s; border-radius: 8px; margin-top: 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc; }
-    .accordion.active, .accordion:hover { background-color: #dcdcdc; }
-    .accordion:after { content: '\002B'; font-weight: bold; font-size: 1.2rem; }
-    .accordion.active:after { content: "\2212"; }
-    
-    .panel { padding: 0 10px; background-color: white; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; margin-bottom: 5px; border-radius: 0 0 8px 8px; }
-    .panel.show { padding-top: 10px; padding-bottom: 10px; border: 1px solid #ccc; border-top: none; }
+        .admin-edit-link { color: blue; text-decoration: underline; cursor: pointer; }
 
-    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-    .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
-    .food-btn { border-left-color: var(--food); }
-    .add-btn { border-left-color: #7f8c8d; }
-
-    .inv-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #eee; }
-    .inv-name { font-size: 0.9rem; font-weight: bold; flex: 2; color: #333; }
-    .inv-in { width: 70px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: center; margin-right: 8px; font-size: 1rem; border-color:green;}
-    .inv-btn { background: green; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-
-    table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
-    th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
-    .inv-table th { background: #eee; font-size: 0.75rem; text-align: center; }
-    .inv-table td { font-size: 0.8rem; text-align: center; }
-    .inv-table td:first-child { text-align: left; }
-    .stock-curr { font-weight: bold; color: var(--accent); }
-    .admin-edit-link { color: blue; text-decoration: underline; cursor: pointer; background: #eef; padding: 2px 5px; border-radius: 3px; }
-
-    .print-only { display: none; }
-    @media print {
-        .no-print { display: none !important; }
-        .print-only { display: block !important; }
-        .section-header, .accordion { border:none; padding:0; margin: 10px 0; font-size: 14px; text-decoration: underline; pointer-events: none; }
-        .accordion:after { content: none; }
-        .panel { max-height: none !important; display: block; border: none; }
-        body { background: white; }
-        .container { max-width: 100%; padding: 0; }
-        .card { border: none; }
-    }
-
-    .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
-    .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
-    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
-    .modal-content { background:white; padding:20px; border-radius:15px; text-align:center; }
-    
-    .staff-loss-row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; }
-    .staff-name { font-weight:bold; color: #333; }
-    .staff-val { font-weight:bold; color: red; }
-</style>
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; }
+            .panel { max-height: none !important; overflow: visible !important; }
+        }
+        .print-only { display: none; }
+    </style>
 </head>
 <body>
-<div class="container">
-    <div class="print-only" style="text-align:center;">
-        <h1 style="margin:0;">BEAN & BLOOM COFFEEHOUSE</h1>
-        <p id="pdf-date" style="font-weight:bold;"></p>
-        <hr>
-    </div>
 
-    <header class="no-print">
-        <h2 style="color:var(--primary)">☕ Bean & Bloom</h2>
-        <input type="date" id="work-date">
-    </header>
-
-    <div class="dashboard">
-        <div id="admin-manual-control" class="admin-box no-print">
-            <h4>Admin: Night Settings</h4>
-            <div class="admin-input-row">
-                <div class="admin-input-grp">
-                    <label>Night Food</label>
-                    <input type="number" id="manual-night-food" value="0">
-                </div>
-                <div class="admin-input-grp">
-                    <label>Night Buna</label>
-                    <input type="number" id="manual-night-buna" value="0">
-                </div>
-            </div>
-
-            <div style="margin-top:10px; font-size:0.75rem; text-align:center; font-weight:bold; color:#c0392b;">WHO WAS UNAVAILABLE (ABSENT)?</div>
-            <div class="chk-container">
-                <label class="chk-lbl">
-                    <input type="checkbox" id="absent-amelewerk"> Amelewerk
-                </label>
-                <label class="chk-lbl">
-                    <input type="checkbox" id="absent-frehiwot"> Frehiwot
-                </label>
-            </div>
-            
-            <button onclick="saveNightStats()" style="width:100%; margin-top:10px; padding:8px; background:#c0392b; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">SAVE CHANGES</button>
-        </div>
-
-        <div class="card"><span class="lbl">የተሸጠው ብር</span><span class="val" id="total-s" style="color:green">0</span></div>
-        <div class="card"><span class="lbl">ወጭወች</span><span class="val" id="total-e" style="color:red">0</span></div>
-        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">ከወጭ ቀሪ</span><span class="val" id="total-n">0</span></div>
-        <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">የምግብ ቁጥር</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
-        
-        <div class="card" id="admin-month-card" style="display:none; grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold); margin-top:5px;">
-            <span class="lbl" style="color:var(--gold);">ወርሃዊ ገቢ (Net)</span>
-            <span class="val" id="month-n" style="color:var(--gold); font-size:1.4rem;">...</span>
-        </div>
-        
-        <div class="card" style="border: 1px dashed var(--incentive); background: #fdfdfd;">
-            <span class="lbl" style="color:var(--incentive);">የቀኑ የሰራተኛ ጉርሻ</span>
-            <span class="val" id="daily-incentive" style="color:var(--incentive);">0.00</span>
-            <div style="font-size:0.65rem; color:#666;">Norm: <b id="d-inc-norm">0</b> | Night: <b id="d-inc-night">0</b></div>
-        </div>
-        <div class="card" style="border: 2px solid var(--incentive); background: #ebf5fb;">
-            <span class="lbl" style="color:var(--incentive);">ወርሃዊ የሰራተኛ ጉርሻ</span>
-            <span class="val" id="month-incentive" style="color:var(--incentive); font-size:1.4rem;">0.00</span>
-        </div>
-
-        <div class="card" style="grid-column: span 2; border: 1px solid red; background: #fff5f5;">
-            <span class="lbl" style="color:red; margin-bottom:5px;">Waiter Night Balance (Loss)</span>
-            <div class="staff-loss-row">
-                <span class="staff-name">Amelewerk</span>
-                <span class="staff-val" id="bal-ame">0.00</span>
-            </div>
-            <div class="staff-loss-row" style="border:none;">
-                <span class="staff-name">Frehiwot</span>
-                <span class="staff-val" id="bal-fre">0.00</span>
-            </div>
-            <div style="font-size:0.6rem; color:#666; margin-top:5px;">* Amount lost due to unavailability (Monthly)</div>
-        </div>
-    </div>
-
-    <div class="no-print">
-        <div class="section-header">ትኩስና ቀዝቃዛ መጠጦች</div>
-        <div class="section-content"><div id="grid-hot" class="menu-grid"></div></div>
-
-        <div class="section-header">የፆም ምግቦች</div>
-        <div class="section-content"><div id="grid-fasting" class="menu-grid"></div></div>
-
-        <div class="section-header">ጁሶች</div>
-        <div class="section-content"><div id="grid-juices" class="menu-grid"></div></div>
-
-        <div class="section-header">የፍስክ ምግቦች</div>
-        <div class="section-content"><div id="grid-nonfast" class="menu-grid"></div></div>
-
-        <div class="section-header">ተጨማሪ ነገሮች</div>
-        <div class="section-content"><div id="grid-add" class="menu-grid"></div></div>
-
-        <div class="section-header">ተጨማሪ ገቢ & ወጭወች</div>
-        <div class="section-content">
-            <div style="background:#fff; padding:10px; border-radius:10px; margin-top:10px; border:1px dashed green;">
-                <p style="font-weight:bold; color:green; font-size:0.8rem; margin:0 0 5px 0;">ተጨማሪ ገቢ (Income)</p>
-                <div style="display:flex; gap:5px;">
-                    <input type="text" id="rev-name" placeholder="Source..." style="flex:2; padding:8px;">
-                    <input type="number" id="rev-amt" placeholder="Amt" style="flex:1; padding:8px;">
-                </div>
-                <button onclick="saveRev()" style="width:100%; margin-top:5px; padding:10px; background:green; color:white; border:none; border-radius:5px;">Save (+)</button>
-            </div>
-            <div style="background:#fff; padding:10px; border-radius:10px; margin-top:10px; border:1px dashed red;">
-                <p style="font-weight:bold; color:red; font-size:0.8rem; margin:0 0 5px 0;">ወጭወች (Expenses)</p>
-                <div style="display:flex; gap:5px;">
-                    <input type="text" id="ex-name" placeholder="Reason..." style="flex:2; padding:8px;">
-                    <input type="number" id="ex-amt" placeholder="Amt" style="flex:1; padding:8px;">
-                </div>
-                <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save (-)</button>
-            </div>
-        </div>
-
-        <div id="admin-stock-wrapper" style="display:none;">
-            <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock - Admin)</button>
-            <div class="panel">
-                <div id="restock-container" style="padding-top:10px;"></div>
-                <div id="restock-log-container" style="display:none; margin-top:15px; border-top:1px dashed #ccc; padding-top:10px;">
-                    <h5 style="margin:0 0 5px 0; color:#333;">Today's Restock Log</h5>
-                    <table style="width:100%;">
-                        <thead><tr><th>Item</th><th>Total Added</th><th>Action</th></tr></thead>
-                        <tbody id="restock-log-body"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        
-        <button class="accordion">Sales Report (Description | Qty | Total)</button>
-        <div class="panel">
-            <table style="width:100%; margin-top:10px;">
-                <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
-                <tbody id="log-body"></tbody>
-            </table>
-            <div style="font-size:0.75rem; color:#666; margin-top:5px;" class="no-print">
-                * Admin: Tap ✏️ to edit. Tap ❌ to delete Income/Expense items.
-            </div>
-        </div>
-
-        <button class="accordion" style="background:#333; color:white;">መኖር ያለባቸው ነገሮች (Inventory)</button>
-        <div class="panel"> 
-            <table class="inv-table" style="margin-top:10px;">
-                <thead><tr><th>Item</th><th>Yest.</th><th>Added</th><th>Sold</th><th>LEFT</th></tr></thead>
-                <tbody id="live-inv-body"></tbody>
-            </table>
-            <div style="font-size:0.7rem; color:#666; margin-top:5px;">* Admin: Tap blue numbers on Injera/Dabo to correct stock.</div>
-        </div>
-    </div>
-
-    <div class="print-only card" style="padding:0; margin-top:20px; overflow:hidden; border:1px solid #000;">
-        <h4 style="padding:10px; background:#eee; margin:0;">End of Day Inventory Status</h4>
-        <table class="inv-table">
-            <thead><tr><th>Item</th><th>Started</th><th>Sold/Used</th><th>Remaining</th></tr></thead>
-            <tbody id="print-inv-body"></tbody>
-        </table>
-    </div>
-
-    <div class="admin-nav no-print">
-        <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
-        <button id="print-btn" class="btn-payout" onclick="initiateFinalize()" style="display:none;">Save, Finalize & Reset</button>
+<div class="header no-print">
+    <div style="font-weight: bold;">BEAN CAFÉ</div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <input type="date" id="work-date" style="padding: 5px; border-radius: 4px; border: none;">
+        <button class="btn-outline" id="auth-btn" onclick="handleAuth()">Admin</button>
     </div>
 </div>
 
-<div id="qty-modal" class="modal">
+<div class="container">
+    
+    <button class="accordion no-print">☕ Hot Drinks <span>+</span></button>
+    <div class="panel"><div class="menu-grid" id="grid-hot"></div></div>
+
+    <button class="accordion no-print">🍹 Juices <span>+</span></button>
+    <div class="panel"><div class="menu-grid" id="grid-juices"></div></div>
+
+    <button class="accordion no-print">🥗 Fasting Food <span>+</span></button>
+    <div class="panel"><div class="menu-grid" id="grid-fasting"></div></div>
+
+    <button class="accordion no-print">🥩 Non-Fasting Food <span>+</span></button>
+    <div class="panel"><div class="menu-grid" id="grid-nonfast"></div></div>
+
+    <button class="accordion no-print">🥖 Extras <span>+</span></button>
+    <div class="panel"><div class="menu-grid" id="grid-add"></div></div>
+
+    <div class="admin-section">
+        <h3 style="margin-top:0;">Daily Summary</h3>
+        <div class="grid-2">
+            <div class="stat-card" style="background:#2d6a4f;">Sales: <br><span id="total-s">0</span> ETB</div>
+            <div class="stat-card" style="background:#bc4749;">Expenses: <br><span id="total-e">0</span> ETB</div>
+        </div>
+        <div class="stat-card" style="background:#4a2c2a; text-align: center;">
+            Net Cash: <br><span id="total-n" style="font-size: 1.5rem;">0 ETB</span>
+        </div>
+
+        <table id="daily-log-table">
+            <thead>
+                <tr><th>Item</th><th>Qty</th><th>Total</th><th class="no-print">Action</th></tr>
+            </thead>
+            <tbody id="log-body"></tbody>
+        </table>
+
+        <div class="grid-2 no-print" style="margin-top: 15px;">
+            <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                <small>Manual Expense</small>
+                <input type="text" id="ex-name" placeholder="Item Name" style="width: 90%;">
+                <input type="number" id="ex-amt" placeholder="Amount" style="width: 90%;">
+                <button class="btn-main" onclick="saveEx()" style="background:var(--danger)">Save Expense</button>
+            </div>
+            <div style="border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                <small>Manual Income</small>
+                <input type="text" id="rev-name" placeholder="Item Name" style="width: 90%;">
+                <input type="number" id="rev-amt" placeholder="Amount" style="width: 90%;">
+                <button class="btn-main" onclick="saveRev()">Save Income</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-section" id="admin-stock-wrapper">
+        <h3>Live Stock Tracking</h3>
+        <table>
+            <thead>
+                <tr><th>Item</th><th>Yesterday</th><th>In</th><th>Used</th><th>LEFT</th></tr>
+            </thead>
+            <tbody id="live-inv-body"></tbody>
+        </table>
+        
+        <div class="no-print">
+            <h4>Restock Items</h4>
+            <div id="restock-container"></div>
+        </div>
+    </div>
+
+    <div class="admin-section">
+        <h3>Incentive Calculator</h3>
+        <p>Total Food Plates: <strong id="total-plates">0</strong></p>
+        
+        <div id="admin-manual-control" class="grid-2 no-print" style="background: #fff3e0; padding: 10px; margin-bottom: 10px; border-radius: 5px; display: none;">
+            <div>
+                <small>Night Food Qty:</small>
+                <input type="number" id="manual-night-food" value="0">
+            </div>
+            <div>
+                <small>Night Buna Qty:</small>
+                <input type="number" id="manual-night-buna" value="0">
+            </div>
+            <div style="grid-column: span 2;">
+                <label><input type="checkbox" id="absent-amelewerk"> Amelewerk Absent (Night)</label><br>
+                <label><input type="checkbox" id="absent-frehiwot"> Frehiwot Absent (Night)</label>
+            </div>
+            <button class="btn-main" style="grid-column: span 2;" onclick="saveNightStats()">Update Night Stats</button>
+        </div>
+
+        <div style="background: #e9ecef; padding: 15px; border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between;">
+                <span>Daily Incentive:</span>
+                <strong id="daily-incentive">0.00</strong>
+            </div>
+            <hr>
+            <div style="font-size: 0.8rem; color: #666;">
+                Normal Hours Share: <span id="d-inc-norm">0</span> ETB<br>
+                Night Shift Share: <span id="d-inc-night">0</span> ETB
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-section" id="admin-month-card" style="display:none; background: #2d3436; color: white;">
+        <h3>Monthly Performance</h3>
+        <p>Month Net Cash: <span id="month-n">0 ETB</span></p>
+        <p>Month Total Incentive: <span id="month-incentive">0 ETB</span></p>
+        <hr>
+        <p>Amelewerk Balance (Deductions): <span id="bal-ame">0</span> ETB</p>
+        <p>Frehiwot Balance (Deductions): <span id="bal-fre">0</span> ETB</p>
+    </div>
+
+    <div id="restock-log-container" class="admin-section no-print">
+        <h3>Today's Restocks</h3>
+        <table>
+            <thead><tr><th>Item</th><th>Qty</th><th>Action</th></tr></thead>
+            <tbody id="restock-log-body"></tbody>
+        </table>
+    </div>
+
+    <button class="btn-main no-print" id="print-btn" onclick="initiateFinalize()" style="margin-top: 20px; background: #000; display: none;">Finalize Day & Print Report</button>
+</div>
+
+<div class="print-only" style="padding: 20px;">
+    <h2 style="text-align: center;">BEAN CAFÉ - DAILY REPORT</h2>
+    <p id="pdf-date" style="text-align: center;"></p>
+    <hr>
+    <h3>Inventory Status</h3>
+    <table>
+        <thead><tr><th>Item</th><th>Start (Yest+In)</th><th>Used</th><th>Actual Left</th></tr></thead>
+        <tbody id="print-inv-body"></tbody>
+    </table>
+    <div style="margin-top: 40px; display: flex; justify-content: space-between;">
+        <div>____________________<br>Manager Signature</div>
+        <div>____________________<br>Stock Keeper Signature</div>
+    </div>
+</div>
+
+<div id="qty-modal">
     <div class="modal-content">
         <h3 id="m-item">Item</h3>
-        <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100px; text-align:center; margin:15px;">
-        <div style="display:flex; gap:10px;">
-            <button onclick="closeModal()" style="flex:1; padding:10px;">Cancel</button>
-            <button onclick="confirmSale()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:5px;">Add</button>
+        <input type="number" id="m-qty" value="1" min="1">
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn-main" onclick="confirmSale()" style="flex:2">Confirm</button>
+            <button class="btn" onclick="closeModal()" style="background:#eee; flex:1">Cancel</button>
         </div>
     </div>
 </div>
@@ -264,7 +225,7 @@
         appId: "1:702927377502:web:9e50192a0c431da69850cf"
     };
 
-    firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore(), auth = firebase.auth();
     const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
@@ -309,7 +270,6 @@
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
             
-            // Toggle Admin Views
             document.getElementById('admin-month-card').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('admin-manual-control').style.display = isAdmin ? 'grid' : 'none'; 
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
@@ -378,30 +338,20 @@
         document.getElementById('rev-name').value = ''; document.getElementById('rev-amt').value = '';
     }
 
-    // --- ADMIN MANUAL INPUT SAVER ---
     async function saveNightStats() {
         const date = document.getElementById('work-date').value;
         const f = parseInt(document.getElementById('manual-night-food').value) || 0;
         const b = parseInt(document.getElementById('manual-night-buna').value) || 0;
-        
-        // Get Checkbox States
         const abs_a = document.getElementById('absent-amelewerk').checked;
         const abs_f = document.getElementById('absent-frehiwot').checked;
         
-        await db.collection('adjustments').doc(date).set({ 
-            f: f, 
-            b: b,
-            abs_a: abs_a,
-            abs_f: abs_f
-        }, { merge: true });
+        await db.collection('adjustments').doc(date).set({ f: f, b: b, abs_a: abs_a, abs_f: abs_f }, { merge: true });
         alert("Night Stats & Attendance Saved!");
     }
 
-    // --- INCENTIVE CALCULATION LOGIC ---
     function updateDailyIncentive() {
         let n_food_qty = manualStats.f || 0;
         let n_buna_qty = manualStats.b || 0;
-
         let norm_food_qty = dailyTotals.f - n_food_qty;
         let norm_buna_qty = dailyTotals.b - n_buna_qty;
         if(norm_food_qty < 0) norm_food_qty = 0; 
@@ -411,24 +361,19 @@
         if (norm_food_qty > 25 && norm_buna_qty > 45) {
             inc_norm = ((norm_food_qty - 25) * 7.3) + ((norm_buna_qty - 45) * 4.1);
         }
-
         let inc_night = (n_food_qty * 25) + (n_buna_qty * 10);
-        let finalDailyInc = inc_norm + inc_night;
-
-        document.getElementById('daily-incentive').innerText = finalDailyInc.toFixed(2);
+        document.getElementById('daily-incentive').innerText = (inc_norm + inc_night).toFixed(2);
         document.getElementById('d-inc-norm').innerText = inc_norm.toFixed(1);
         document.getElementById('d-inc-night').innerText = inc_night.toFixed(1);
     }
 
     function updateMonthlyIncentive() {
         if(!monthlySnap) return;
-
         let mNet = 0, dStats = {};
         
         monthlySnap.forEach(doc => {
             const t = doc.data(); if(t.type === 'restock') return;
             if(t.ex) mNet -= t.p; else mNet += t.p;
-            
             if(!t.ex) {
                 if(!dStats[t.d]) dStats[t.d] = { total_f:0, total_b:0 };
                 if(FOOD_SET.has(t.n)) dStats[t.d].total_f += t.q;
@@ -436,29 +381,20 @@
             }
         });
 
-        let mInc = 0;
-        let amelewerk_loss = 0;
-        let frehiwot_loss = 0;
-
+        let mInc = 0, amelewerk_loss = 0, frehiwot_loss = 0;
         const allDays = new Set([...Object.keys(dStats), ...Object.keys(monthAdjustments)]);
 
         allDays.forEach(dayKey => {
             const day = dStats[dayKey] || { total_f:0, total_b:0 };
             const adj = monthAdjustments[dayKey] || { f:0, b:0, abs_a:false, abs_f:false };
             
-            let n_f = adj.f || 0;
-            let n_b = adj.b || 0;
-            let norm_f = day.total_f - n_f;
-            let norm_b = day.total_b - n_b;
-            if(norm_f < 0) norm_f = 0;
-            if(norm_b < 0) norm_b = 0;
+            let n_f = adj.f || 0, n_b = adj.b || 0;
+            let norm_f = day.total_f - n_f, norm_b = day.total_b - n_b;
+            if(norm_f < 0) norm_f = 0; if(norm_b < 0) norm_b = 0;
 
             let nightTotal = (n_f * 25) + (n_b * 10);
             mInc += nightTotal;
-
-            if(norm_f > 25 && norm_b > 45) {
-                mInc += ((norm_f - 25) * 7.3) + ((norm_b - 45) * 4.1);
-            }
+            if(norm_f > 25 && norm_b > 45) mInc += ((norm_f - 25) * 7.3) + ((norm_b - 45) * 4.1);
 
             let share = nightTotal / 2;
             if(adj.abs_a) amelewerk_loss -= share;
@@ -471,30 +407,46 @@
         document.getElementById('bal-fre').innerText = frehiwot_loss.toFixed(2);
     }
 
-    // --- CORE LOGIC: SYNC & INVENTORY CALCULATION ---
+    // --- CRITICAL DATE HELPER ---
+    function getSafeYesterday(dateStr) {
+        let parts = dateStr.split('-');
+        let y = parseInt(parts[0]);
+        let m = parseInt(parts[1]) - 1; 
+        let d = parseInt(parts[2]);
+        
+        let dateObj = new Date(y, m, d);
+        dateObj.setDate(dateObj.getDate() - 1);
+        
+        let yy = dateObj.getFullYear();
+        let mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        let dd = String(dateObj.getDate()).padStart(2, '0');
+        
+        return `${yy}-${mm}-${dd}`;
+    }
+
     async function sync() {
         const date = document.getElementById('work-date').value;
         if(dailyListener) dailyListener();
         if(adjustmentListener) adjustmentListener();
         if(monthlyListener) monthlyListener();
 
-        // 1. Reset Stock State (The buckets for our math)
         stockState = {}; 
         INVENTORY_ITEMS.forEach(i => stockState[i] = { yest: 0, added: 0, used: 0 });
 
-        // 2. Fetch "Yesterday's" Ending Balance
-        const dObj = new Date(date); dObj.setDate(dObj.getDate() - 1);
-        const yestStr = dObj.toISOString().split('T')[0];
-        const yestSnap = await db.collection('inventory').where('d', '==', yestStr).get();
-        yestSnap.forEach(doc => { 
-            const d = doc.data(); 
-            if(stockState[d.n]) stockState[d.n].yest = parseFloat(d.left); 
-        });
+        const yestStr = getSafeYesterday(date);
         
-        // Force render here just in case dailyListener finished before yesterday's data arrived
+        try {
+            const yestSnap = await db.collection('inventory').where('d', '==', yestStr).get();
+            if(!yestSnap.empty) {
+                yestSnap.forEach(doc => { 
+                    const d = doc.data(); 
+                    if(stockState[d.n]) stockState[d.n].yest = parseFloat(d.left); 
+                });
+            }
+        } catch(err) { console.error(err); }
+
         renderInventoryTable();
 
-        // 3. Listen for Manual Adjustments
         adjustmentListener = db.collection('adjustments').doc(date).onSnapshot(doc => {
             if (doc.exists) {
                 manualStats = doc.data();
@@ -514,70 +466,56 @@
             updateMonthlyIncentive();
         });
 
-        // 4. Listen for Today's Transactions (Live Calculation)
         dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, totalPlates=0;
             dailyTotals.f = 0; dailyTotals.b = 0;
             
-            // Reset Today's values only (Added/Used), preserve Yesterday's
             INVENTORY_ITEMS.forEach(i => { stockState[i].added = 0; stockState[i].used = 0; });
             
             let html='', reportMap = {}, restockMap = {};
 
             snap.forEach(doc => {
                 const t = doc.data();
-                
-                // === INVENTORY LOGIC: ADDED VS SOLD ===
                 if(t.type === 'restock') {
-                    // It is an "Added" stock item
                     if(stockState[t.itemRef]) stockState[t.itemRef].added += t.q; 
                     if(!restockMap[t.itemRef]) restockMap[t.itemRef] = 0;
                     restockMap[t.itemRef] += t.q;
                 } else {
-                    // It is a Sale/Expense
                     if(t.ex) e += t.p; else s += t.p;
-                    
                     if (!t.ex) {
                         if (FOOD_SET.has(t.n)) { totalPlates += t.q; dailyTotals.f += t.q; }
                         if (t.n === 'ቡና') { dailyTotals.b += t.q; }
-
-                        // RECIPE DEDUCTION
                         if(RECIPES[t.n]) {
-                            RECIPES[t.n].forEach(instruction => { 
-                                if(stockState[instruction.i]) stockState[instruction.i].used += (instruction.q * t.q); 
+                            RECIPES[t.n].forEach(ins => { 
+                                if(stockState[ins.i]) stockState[ins.i].used += (ins.q * t.q); 
                             });
                         }
                     }
                 }
 
-                // Report Data Construction
                 if (t.type !== 'restock') {
                     const color = t.ex ? 'red' : (t.n.startsWith('IN:') ? 'green' : 'black');
-                    if(!reportMap[t.n]) {
-                        const isMenu = MENU.some(m => m.n === t.n);
-                        reportMap[t.n] = { q:0, p:0, c: color, isMenu: isMenu, isExpense: t.ex };
-                    }
+                    if(!reportMap[t.n]) reportMap[t.n] = { q:0, p:0, c: color, isMenu: MENU.some(m => m.n === t.n), isExpense: t.ex };
                     reportMap[t.n].q += t.q;
                     reportMap[t.n].p += t.p;
                 }
             });
 
-            // Update UI elements
             Object.keys(reportMap).sort().forEach(itemName => {
                 const item = reportMap[itemName];
                 let actions = '';
                 if (isAdmin) {
-                    actions += `<button onclick="adjustItemTotal('${itemName}', ${item.q}, ${item.p}, ${item.isMenu}, ${item.isExpense})" style="padding:2px 8px; cursor:pointer; margin-right:5px;">✏️</button>`;
-                    if (!item.isMenu) actions += `<button onclick="deleteTransaction('${itemName}')" style="padding:2px 8px; cursor:pointer; color:red; border:1px solid red; background:#fff;">❌</button>`;
+                    actions += `<button onclick="adjustItemTotal('${itemName}', ${item.q}, ${item.p}, ${item.isMenu}, ${item.isExpense})" style="padding:2px 8px; cursor:pointer;">✏️</button>`;
+                    if (!item.isMenu) actions += `<button onclick="deleteTransaction('${itemName}')" style="padding:2px 8px; cursor:pointer; color:red;">❌</button>`;
                 }
-                html += `<tr><td style="color:${item.c};">${itemName}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print" style="white-space:nowrap;">${actions}</td></tr>`;
+                html += `<tr><td style="color:${item.c};">${itemName}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${actions}</td></tr>`;
             });
             document.getElementById('log-body').innerHTML = html;
 
             let restockHtml = '';
             Object.keys(restockMap).sort().forEach(itemName => {
                 let qty = restockMap[itemName];
-                if (Math.abs(qty) > 0.001) restockHtml += `<tr><td>${itemName}</td><td>${qty.toFixed(2)}</td><td><button onclick="adjustRestockTotal('${itemName}', ${qty})" style="padding:2px 8px; cursor:pointer;">✏️ Edit</button></td></tr>`;
+                restockHtml += `<tr><td>${itemName}</td><td>${qty.toFixed(2)}</td><td><button onclick="adjustRestockTotal('${itemName}', ${qty})">Edit</button></td></tr>`;
             });
             document.getElementById('restock-log-body').innerHTML = restockHtml;
 
@@ -587,107 +525,66 @@
             document.getElementById('total-plates').innerText = totalPlates;
 
             updateDailyIncentive();
-            
-            // RENDER THE LIVE INVENTORY TABLE
             renderInventoryTable();
         });
 
-        // 5. Monthly Stats
         const year = date.split('-')[0], month = date.split('-')[1];
-        const adjSnap = await db.collection('adjustments').where(firebase.firestore.FieldPath.documentId(), '>=', `${year}-${month}-01`).where(firebase.firestore.FieldPath.documentId(), '<=', date).get();
+        const mAdjSnap = await db.collection('adjustments').where(firebase.firestore.FieldPath.documentId(), '>=', `${year}-${month}-01`).where(firebase.firestore.FieldPath.documentId(), '<=', date).get();
         monthAdjustments = {}; 
-        adjSnap.forEach(doc => { monthAdjustments[doc.id] = doc.data(); });
-
+        mAdjSnap.forEach(doc => { monthAdjustments[doc.id] = doc.data(); });
         monthlyListener = db.collection('transactions').where('d', '>=', `${year}-${month}-01`).where('d', '<=', date).onSnapshot(snap => {
             monthlySnap = snap; 
             updateMonthlyIncentive();
         });
     }
 
-    // --- RENDER FUNCTION: WHERE THE LOGIC IS VISUALIZED ---
     function renderInventoryTable() {
         let html = '', printHtml = '';
-        
         INVENTORY_ITEMS.forEach(name => {
             const i = stockState[name];
-            
-            // LOGIC: YESTERDAY + ADDED - SOLD = LEFT
             const current = (i.yest + i.added - i.used);
-            
-            // Formatting
             let leftDisplay = current.toFixed(2);
-            
-            // Admin Correct allows clicking to fix "Left" directly
             if (isAdmin && MANUAL_LINK_ITEMS.includes(name)) {
                 leftDisplay = `<span class="admin-edit-link" onclick="adjustLiveInventory('${name}', ${current})">${current.toFixed(2)}</span>`;
             }
-
-            // HTML Table Row
-            html += `<tr>
-                <td>${name}</td>
-                <td>${i.yest}</td>
-                <td style="color:green; font-weight:bold;">+${i.added}</td>
-                <td style="color:red; font-weight:bold;">-${i.used.toFixed(2)}</td>
-                <td class="stock-curr">${leftDisplay}</td>
-            </tr>`;
-            
-            // Print Version (simplified)
+            html += `<tr><td>${name}</td><td>${i.yest.toFixed(2)}</td><td style="color:green;">+${i.added}</td><td style="color:red;">-${i.used.toFixed(2)}</td><td class="stock-curr">${leftDisplay}</td></tr>`;
             printHtml += `<tr><td>${name}</td><td>${(i.yest + i.added).toFixed(2)}</td><td>${i.used.toFixed(2)}</td><td>${current.toFixed(2)}</td></tr>`;
         });
-        
         document.getElementById('live-inv-body').innerHTML = html;
         document.getElementById('print-inv-body').innerHTML = printHtml;
     }
 
     async function deleteTransaction(itemName) {
-        if(!confirm(`Delete all entries for: ${itemName}?`)) return;
+        if(!confirm(`Delete: ${itemName}?`)) return;
         const date = document.getElementById('work-date').value;
         const snapshot = await db.collection('transactions').where('d', '==', date).where('n', '==', itemName).get();
         const batch = db.batch(); snapshot.forEach(doc => batch.delete(doc.ref)); await batch.commit();
     }
 
-    async function adjustItemTotal(itemName, currentQty, currentTotal, isMenu, isExpense) {
+    async function adjustItemTotal(itemName, q, p, isMenu, ex) {
         if (isMenu) {
-            let newQty = prompt(`Change Qty for ${itemName} (curr: ${currentQty}):`, currentQty);
-            if (newQty === null) return; newQty = parseInt(newQty); if (isNaN(newQty)) return;
-            const diff = newQty - currentQty; if(diff === 0) return;
-            const menuObj = MENU.find(m => m.n === itemName);
-            await db.collection('transactions').add({ n: itemName, q: diff, p: diff * (menuObj ? menuObj.p : 0), d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
+            let nq = prompt(`Qty (curr: ${q}):`, q); if (nq === null) return; nq = parseInt(nq);
+            const d = nq - q; if(d === 0) return;
+            const mo = MENU.find(m => m.n === itemName);
+            await db.collection('transactions').add({ n: itemName, q: d, p: d * (mo ? mo.p : 0), d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
         } else {
-            let newTotal = prompt(`Change Total for ${itemName} (curr: ${currentTotal}):`, currentTotal);
-            if (newTotal === null) return; newTotal = parseFloat(newTotal); if (isNaN(newTotal)) return;
-            const diff = newTotal - currentTotal; if (Math.abs(diff) < 0.01) return;
-            await db.collection('transactions').add({ n: itemName, q: 0, p: diff, d: document.getElementById('work-date').value, ex: isExpense, ts: Date.now() });
+            let np = prompt(`Total (curr: ${p}):`, p); if (np === null) return; np = parseFloat(np);
+            const d = np - p; if (Math.abs(d) < 0.01) return;
+            await db.collection('transactions').add({ n: itemName, q: 0, p: d, d: document.getElementById('work-date').value, ex: ex, ts: Date.now() });
         }
     }
 
-    async function adjustRestockTotal(itemName, currentQty) {
-        let newQty = prompt(`Change RESTOCK for ${itemName} (curr: ${currentQty}):`, currentQty);
-        if (newQty === null) return; newQty = parseFloat(newQty); if (isNaN(newQty)) return;
-        const diff = newQty - currentQty; if (Math.abs(diff) < 0.001) return;
-        await db.collection('transactions').add({ n: `Restock Adj: ${itemName}`, q: diff, p: 0, d: document.getElementById('work-date').value, ex: false, type: 'restock', itemRef: itemName, ts: Date.now() });
+    async function adjustRestockTotal(itemName, q) {
+        let nq = prompt(`Restock (curr: ${q}):`, q); if (nq === null) return; nq = parseFloat(nq);
+        const d = nq - q; if (Math.abs(d) < 0.001) return;
+        await db.collection('transactions').add({ n: `Restock Adj: ${itemName}`, q: d, p: 0, d: document.getElementById('work-date').value, ex: false, type: 'restock', itemRef: itemName, ts: Date.now() });
     }
 
-    async function adjustLiveInventory(itemName, currentCalculated) {
-        // This adjustment calculates the difference and adds a "Restock" or "Deduction" to make the net equal the actual count
-        let actualLeft = prompt(`MANUAL COUNT for ${itemName}:\nSystem says: ${currentCalculated}\nActual count?`);
-        if(actualLeft === null) return; actualLeft = parseFloat(actualLeft); if(isNaN(actualLeft)) return;
-        
-        const diff = actualLeft - currentCalculated; 
-        if(Math.abs(diff) < 0.01) return;
-        
-        // We log this as a 'restock' type so it appears in the ADDED column or subtracts from it, 
-        // effectively forcing the LEFT value to match reality.
-        await db.collection('transactions').add({ 
-            n: `Manual Count Adj: ${itemName}`, 
-            q: diff, 
-            p: 0, 
-            d: document.getElementById('work-date').value, 
-            ex: false, 
-            type: 'restock', 
-            itemRef: itemName, 
-            ts: Date.now() 
-        });
+    async function adjustLiveInventory(itemName, cur) {
+        let actual = prompt(`Manual Count for ${itemName}:\nSystem: ${cur}\nActual:`);
+        if(actual === null) return; actual = parseFloat(actual);
+        const d = actual - cur; if(Math.abs(d) < 0.01) return;
+        await db.collection('transactions').add({ n: `Manual Adj: ${itemName}`, q: d, p: 0, d: document.getElementById('work-date').value, ex: false, type: 'restock', itemRef: itemName, ts: Date.now() });
     }
 
     function initiateFinalize() {
@@ -699,35 +596,22 @@
     async function finalizeDay() {
         const date = document.getElementById('work-date').value;
         const batch = db.batch();
-        
-        // SAVE ENDING BALANCE so it can be loaded as "Yest" tomorrow
         INVENTORY_ITEMS.forEach(name => {
             const i = stockState[name];
-            // Left = Yest + Added - Used
-            const finalBalance = (i.yest + i.added - i.used);
-            
-            batch.set(db.collection('inventory').doc(`${date}_${name.replace(/\s/g,'')}`), { 
-                n: name, 
-                left: finalBalance, 
-                d: date, 
-                ts: Date.now() 
-            });
+            batch.set(db.collection('inventory').doc(`${date}_${name.replace(/\s/g,'')}`), { n: name, left: (i.yest + i.added - i.used), d: date, ts: Date.now() });
         });
-        
-        // CLEANUP TRANSACTIONS
         const tSnap = await db.collection('transactions').where('d', '==', date).get(); 
         tSnap.forEach(d => batch.delete(d.ref));
-        
         await batch.commit(); 
-        alert("Day Finalized."); 
-        location.reload();
+        alert("Day Finalized."); location.reload();
     }
 
     async function handleAuth() {
         if(auth.currentUser) { auth.signOut(); } 
-        else { const email = prompt("Admin Email:"), pass = prompt("Password:"); if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message)); }
+        else { const email = prompt("Email:"), pass = prompt("Pass:"); if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message)); }
     }
     function closeModal() { document.getElementById('qty-modal').style.display='none'; document.getElementById('m-qty').value = 1; }
 </script>
+
 </body>
 </html>
